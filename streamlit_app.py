@@ -382,7 +382,58 @@ if page == "🔍 Job Search":
                     job_key = job.get('job_url', '').replace('/', '_').replace(':', '')[-50:]
                     
                     if st.button("✏️ Optimize Resume", key=f"resume_{job_key}"):
-                        st.info("Resume optimization will be available once AI module is connected!")
+                        with st.spinner("Tailoring resume with AI..."):
+                            try:
+                                from modules.resume_generator import resume_generator
+                                
+                                # Load master resume
+                                master_resume = resume_generator.load_master_resume()
+                                
+                                if not master_resume:
+                                    st.error("⚠️ Master resume not found! Please create 'Yuting Sun Master Resume.md'")
+                                else:
+                                    # Tailor resume
+                                    tailored = resume_generator.tailor_resume(
+                                        master_resume,
+                                        job.get('description', ''),
+                                        job.get('title', ''),
+                                        job.get('company', '')
+                                    )
+                                    
+                                    # Preview in expander
+                                    with st.expander("📄 Resume Preview", expanded=True):
+                                        st.markdown(f"**{tailored.get('name', 'Your Name')}**")
+                                        st.caption(f"Tailored for: {job.get('title')} at {job.get('company')}")
+                                        
+                                        st.markdown("#### Summary")
+                                        st.write(tailored.get('summary', ''))
+                                        
+                                        st.markdown("#### Experience")
+                                        for exp in tailored.get('experience', [])[:3]:  # Show top 3
+                                            st.markdown(f"**{exp.get('title')}** | {exp.get('company', '')}")
+                                            for detail in exp.get('details', [])[:2]:  # Show 2 bullets
+                                                st.markdown(f"- {detail}")
+                                        
+                                        st.markdown("#### Skills")
+                                        st.write(', '.join(tailored.get('skills', [])[:10]))
+                                    
+                                    # Download buttons
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        if st.button("📥 Download DOCX", key=f"docx_{job_key}"):
+                                            filename = f"{job.get('company', 'company').replace(' ', '_')}_resume.docx"
+                                            path = resume_generator.export_docx(tailored, filename)
+                                            st.success(f"✅ Resume saved: {path}")
+                                    
+                                    with col2:
+                                        if st.button("📥 Download PDF", key=f"pdf_{job_key}"):
+                                            filename = f"{job.get('company', 'company').replace(' ', '_')}_resume.pdf"
+                                            path = resume_generator.export_pdf(tailored, filename)
+                                            st.success(f"✅ Resume saved: {path}")
+                            
+                            except Exception as e:
+                                st.error(f"Resume generation failed: {e}")
+                                streamlit_logger.error(f"Resume error: {e}", exc_info=True)
                     
                     if st.button("✉️ Create Draft", key=f"email_{job_key}"):
                         with st.spinner("Generating email..."):

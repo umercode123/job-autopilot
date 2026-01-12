@@ -94,14 +94,34 @@ source venv/bin/activate
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Configure environment variables
+# 4. **REQUIRED**: Create your master resume
+# Create a file named "Yuting Sun Master Resume.md" (or your name)
+# Place it in the project root directory
+# Format: Markdown with sections for Experience, Education, Skills
+# Example:
+# # Your Name
+# ## Contact
+# email@example.com | (123) 456-7890 | Toronto, ON
+# ## Professional Summary
+# Your summary here...
+# ## Experience
+# ### Job Title | Company | Duration
+# - Achievement bullet point 1
+# - Achievement bullet point 2
+# ## Education
+# ### Degree | University | Year
+# ## Skills
+# - Skill 1
+# - Skill 2
+
+# 5. Configure environment variables
 cp .env.example .env
 # Edit .env with your API keys (see Configuration section)
 
-# 5. Initialize database
+# 6. Initialize database
 python scripts/init_database.py
 
-# 6. Run the application
+# 7. Run the application
 streamlit run streamlit_app.py --server.port=7001
 ```
 
