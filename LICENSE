@@ -1,21 +1,84 @@
-MIT License
+Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)
 
 Copyright (c) 2026 Schlaflied
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+TERMS AND CONDITIONS
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. DEFINITIONS
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+"License" means the terms and conditions for use, reproduction, and distribution as defined by this document.
+
+"Licensor" means Schlaflied, the copyright owner or entity authorized by the copyright owner that is granting the License.
+
+"You" (or "Your") means an individual or legal entity exercising permissions granted by this License.
+
+"The Software" means the Job Autopilot system and associated documentation files.
+
+"Non-Commercial" means not primarily intended for or directed towards commercial advantage or monetary compensation.
+
+2. LICENSE GRANT
+
+Subject to the terms and conditions of this License, Licensor hereby grants You a worldwide, royalty-free, non-exclusive license to:
+
+a) Use the Software for personal and internal business purposes
+b) Copy and distribute copies of the Software
+c) Modify and create derivative works based on the Software
+d) Display and perform the Software
+
+PROVIDED THAT such use is for NON-COMMERCIAL PURPOSES ONLY.
+
+3. NON-COMMERCIAL USE RESTRICTION
+
+You may NOT use this Software for commercial purposes without prior written authorization from the Licensor.
+
+"Commercial purposes" includes but is not limited to:
+- Selling the Software or derivative works
+- Using the Software in a product or service sold to third parties
+- Deploying the Software as a paid SaaS offering
+- Using the Software to generate revenue, directly or indirectly
+
+PERMITTED NON-COMMERCIAL USES include:
+- Personal job search and career development
+- Internal use within a company for employees' own job searching
+- Educational and research purposes
+- Non-profit organizations' internal use
+
+4. COMMERCIAL LICENSING
+
+For commercial use, monetization, or deployment as a commercial service, You MUST:
+- Contact the Licensor at: https://github.com/Schlaflied
+- Obtain a separate commercial license agreement
+- Negotiate commercial licensing terms
+
+5. ATTRIBUTION
+
+You must give appropriate credit to the Licensor, provide a link to this license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the Licensor endorses You or Your use.
+
+6. DISCLAIMER OF WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+7. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER ARISING OUT OF THE USE OF OR INABILITY TO USE THE SOFTWARE.
+
+8. TERMINATION
+
+This License and the rights granted hereunder will terminate automatically upon any breach by You of the terms of this License. Individuals or entities who have received modifications or derivative works from You under this License will not have their licenses terminated provided they remain in full compliance.
+
+9. MISCELLANEOUS
+
+If any provision of this License is held to be unenforceable, such provision shall be reformed only to the extent necessary to make it enforceable.
+
+This License represents the complete agreement concerning the subject matter hereof.
+
+---
+
+For commercial licensing inquiries, please contact:
+GitHub: https://github.com/Schlaflied
+Email: Available via GitHub profile
+
+For more information about Creative Commons licenses, visit:
+https://creativecommons.org/licenses/by-nc/4.0/

@@ -2,7 +2,7 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/Schlaflied/job-autopilot?style=social)](https://github.com/Schlaflied/job-autopilot/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/Schlaflied/job-autopilot?style=social)](https://github.com/Schlaflied/job-autopilot/network/members)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
 **AI-powered job application automation system** that streamlines your job search workflow using GPT-4o-mini, automated scraping, resume optimization, and intelligent cold email campaigns.
 
@@ -485,9 +485,27 @@ Contributions are welcome! This is an open-source project to help job seekers.
 
 ## 📜 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)** - see the [LICENSE](LICENSE) file for details.
 
-**Summary**: Free to use, modify, distribute. Just keep the copyright notice!
+### What This Means:
+
+✅ **FREE for**:
+- Personal use (job searching)
+- Internal company use (employees' job searching)
+- Educational and research purposes
+- Non-profit organizations
+
+❌ **NOT ALLOWED without authorization**:
+- Commercial products or services
+- Paid SaaS offerings
+- Revenue-generating deployments
+- Selling the software or derivatives
+
+### Commercial Licensing
+
+Want to use Job Autopilot commercially? **Contact us for licensing**:
+- GitHub: https://github.com/Schlaflied
+- We offer flexible commercial licensing options
 
 ---
 
