@@ -2,7 +2,7 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/Schlaflied/job-autopilot?style=social)](https://github.com/Schlaflied/job-autopilot/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/Schlaflied/job-autopilot?style=social)](https://github.com/Schlaflied/job-autopilot/network/members)
-[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 **AI-powered job application automation system** that streamlines your job search workflow using GPT-4o-mini, automated scraping, resume optimization, and intelligent cold email campaigns.
 
@@ -485,27 +485,16 @@ Contributions are welcome! This is an open-source project to help job seekers.
 
 ## 📜 License
 
-This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)** - see the [LICENSE](LICENSE) file for details.
 
 ### What This Means:
 
-✅ **FREE for**:
-- Personal use (job searching)
-- Internal company use (employees' job searching)
-- Educational and research purposes
-- Non-profit organizations
+- **Open Source**: You are free to use, modify, and distribute this software.
+- **Copyleft (Viral)**: If you modify this software and distribute it (or host it as a service), you *must* open-source your modifications under the same AGPL-3.0 license.
+- **State Changes**: You must state significant changes made to the software.
+- **Network Use**: Users interacting with this software over a network are entitled to receive the source code.
 
-❌ **NOT ALLOWED without authorization**:
-- Commercial products or services
-- Paid SaaS offerings
-- Revenue-generating deployments
-- Selling the software or derivatives
-
-### Commercial Licensing
-
-Want to use Job Autopilot commercially? **Contact us for licensing**:
-- GitHub: https://github.com/Schlaflied
-- We offer flexible commercial licensing options
+For full details, please read the [LICENSE](LICENSE) file.
 
 ---
 
