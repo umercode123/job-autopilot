@@ -61,7 +61,8 @@ class JobScraper:
             "maxRows": max_jobs,
             "jobType": job_type,
             "remote": remote,
-            "enableUniqueJobs": True
+            "enableUniqueJobs": True,
+            "fromAge": "7"  # NEW: Only jobs posted in last 7 days
         }
         
         try:
@@ -78,19 +79,30 @@ class JobScraper:
             
             # Process and cache jobs
             processed_jobs = []
-            for item in items:
-                job_data = self._process_job_data(item)
+            for i, item in enumerate(items):
+                try:
+                    job_data = self._process_job_data(item)
+                    
+                    # Skip if processing failed (returns empty dict)
+                    if not job_data or not job_data.get("job_url"):
+                        scraper_logger.warning(f"Skipping job {i+1}: Missing job_url after processing")
+                        continue
+                    
+                    # Check cache first
+                    cached = cache_manager.get_cached_job(job_data["job_url"])
+                    if cached:
+                        scraper_logger.debug(f"Using cached job: {job_data['title']}")
+                        processed_jobs.append(cached)
+                    else:
+                        # Cache new job
+                        cache_manager.cache_job(job_data["job_url"], job_data, ttl_days=7)
+                        processed_jobs.append(job_data)
                 
-                # Check cache first
-                cached = cache_manager.get_cached_job(job_data["job_url"])
-                if cached:
-                    scraper_logger.debug(f"Using cached job: {job_data['title']}")
-                    processed_jobs.append(cached)
-                else:
-                    # Cache new job
-                    cache_manager.cache_job(job_data["job_url"], job_data, ttl_days=7)
-                    processed_jobs.append(job_data)
+                except Exception as e:
+                    scraper_logger.error(f"Failed to process job {i+1}: {e}", exc_info=True)
+                    continue
             
+            scraper_logger.info(f"Successfully processed {len(processed_jobs)} jobs")
             return processed_jobs
         
         except Exception as e:
@@ -108,6 +120,23 @@ class JobScraper:
             dict: Processed job data
         """
         try:
+            # Extract job URL with multiple fallbacks
+            job_url = (
+                raw_job.get("url") or 
+                raw_job.get("link") or 
+                raw_job.get("jobUrl") or 
+                raw_job.get("positionUrl") or
+                raw_job.get("jobLink") or
+                raw_job.get("applyLink") or
+                ""
+            )
+            
+            # If still no job_url, log the raw data keys to help debug
+            if not job_url:
+                scraper_logger.error(f"No job_url found! Available keys: {list(raw_job.keys())}")
+                scraper_logger.debug(f"Raw job data sample: {str(raw_job)[:500]}")
+                return {}
+            
             # Extract posted date
             posted_date = raw_job.get("datePublished") or raw_job.get("postedAt")
             if posted_date:
@@ -164,8 +193,8 @@ class JobScraper:
                 "job_age": raw_job.get("jobAge", ""),  # "17 hours ago"
                 
                 # URLs
-                "job_url": raw_job.get("url") or raw_job.get("link", ""),
-                "apply_url": raw_job.get("applyUrl") or raw_job.get("applicationUrl"),
+                "job_url": job_url,
+                "apply_url": raw_job.get("applyUrl") or raw_job.get("applicationUrl") or job_url,
                 "company_url": raw_job.get("companyUrl"),
                 "company_logo_url": raw_job.get("companyLogoUrl"),
                 "header_image_url": raw_job.get("headerImageUrl"),
@@ -185,6 +214,7 @@ class JobScraper:
         
         except Exception as e:
             scraper_logger.error(f"Failed to process job data: {e}", exc_info=True)
+            scraper_logger.debug(f"Problematic raw_job keys: {list(raw_job.keys()) if raw_job else 'None'}")
             return {}
     
     def _categorize_job(self, title: str, description: str) -> str:

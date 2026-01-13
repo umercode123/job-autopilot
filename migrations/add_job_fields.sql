@@ -1,5 +1,5 @@
-# SQL Migration Script for Job Table
-# Run these SQL statements in your Neon/PostgreSQL database console
+-- SQL Migration Script for Job Table
+-- Run these SQL statements in your Neon/PostgreSQL database console
 
 -- Date fields
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS expiration_date TIMESTAMP;
