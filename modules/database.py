@@ -137,8 +137,26 @@ class Job(Base):
     location = Column(String)
     salary = Column(String)
     is_remote = Column(Boolean, default=False)
+    
+    # Date fields
     posted_date = Column(DateTime)
+    expiration_date = Column(DateTime)  # NEW: When job expires
+    job_age = Column(String)  # NEW: "17 hours ago", "4 days ago"
+    
+    # URLs
     job_url = Column(String, unique=True, nullable=False)
+    apply_url = Column(String)  # NEW: Direct apply link (may differ from job_url)
+    company_url = Column(String)  # NEW: Company website
+    company_logo_url = Column(String)  # NEW: Company logo image
+    header_image_url = Column(String)  # NEW: Job header image
+    
+    # Job details
+    job_type = Column(String)  # NEW: fulltime, parttime, contract
+    occupation = Column(String)  # NEW: Occupation category from Indeed
+    benefits = Column(Text)  # NEW: Benefits description
+    rating = Column(String)  # NEW: Company rating (e.g., "4.2")
+    
+    # AI scoring
     match_score = Column(Integer)  # 0-10
     match_reasoning = Column(Text)
     ats_score = Column(Integer)  # 0-100

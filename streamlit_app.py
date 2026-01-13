@@ -301,8 +301,12 @@ if page == "🔍 Job Search":
                         job['match_score'] = score_data['score']
                         job['match_reasoning'] = score_data['reasoning']
                     
+                    # Save to database
+                    saved_count = scraper.save_jobs_to_db(jobs)
+                    streamlit_logger.info(f"Saved {saved_count} jobs to database")
+                    
                     st.session_state.jobs = sorted(jobs, key=lambda x: x.get('match_score', 0), reverse=True)
-                    st.success(f"✅ Found and scored {len(jobs)} jobs!")
+                    st.success(f"✅ Found and scored {len(jobs)} jobs! ({saved_count} saved to database)")
                 
                 streamlit_logger.info(f"Job search completed: {keywords}")
             

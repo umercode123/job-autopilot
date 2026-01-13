@@ -116,6 +116,14 @@ class JobScraper:
                 except:
                     posted_date = None
             
+            # Extract expiration date (if available)
+            expiration_date = raw_job.get("validThrough") or raw_job.get("expirationDate")
+            if expiration_date:
+                try:
+                    expiration_date = datetime.fromisoformat(expiration_date.replace('Z', '+00:00'))
+                except:
+                    expiration_date = None
+            
             # Extract company name (Apify uses different field names)
             company = (
                 raw_job.get("companyName") or 
@@ -149,8 +157,26 @@ class JobScraper:
                 "location": location,
                 "salary": salary,
                 "is_remote": raw_job.get("isRemote", False) or ("remote" in location.lower()),
+                
+                # Date fields
                 "posted_date": posted_date,
+                "expiration_date": expiration_date,
+                "job_age": raw_job.get("jobAge", ""),  # "17 hours ago"
+                
+                # URLs
                 "job_url": raw_job.get("url") or raw_job.get("link", ""),
+                "apply_url": raw_job.get("applyUrl") or raw_job.get("applicationUrl"),
+                "company_url": raw_job.get("companyUrl"),
+                "company_logo_url": raw_job.get("companyLogoUrl"),
+                "header_image_url": raw_job.get("headerImageUrl"),
+                
+                # Job details
+                "job_type": raw_job.get("jobType", ""),  # fulltime, parttime
+                "occupation": raw_job.get("occupation", ""),
+                "benefits": raw_job.get("benefits", ""),
+                "rating": str(raw_job.get("rating", "")) if raw_job.get("rating") else None,
+                
+                # Category & source
                 "job_category": category,
                 "scraped_source": "apify"
             }
