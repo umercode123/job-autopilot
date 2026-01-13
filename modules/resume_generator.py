@@ -460,26 +460,22 @@ class ResumeGenerator:
     def export_pdf(self, resume_data: Dict, filename: str) -> str:
         """
         Export resume to PDF format with template styling
-        
-        Args:
-            resume_data: Resume data dict (may include _meta from template)
-            filename: Output filename
-        
-        Returns:
-            str: Path to generated file
+        Supports Single Column and Two Column layouts
         """
         from reportlab.lib.colors import HexColor
+        from reportlab.platypus import Table, TableStyle
         
         filepath = os.path.join(self.output_dir, filename)
         
-        # Extract template metadata if present
+        # Extract template metadata
         meta = resume_data.get('_meta', {})
         fonts = meta.get('fonts', {})
         margins = meta.get('margins', {'top': 0.5, 'bottom': 0.5, 'left': 0.7, 'right': 0.7})
         line_spacing = meta.get('line_spacing', 1.0)
         colors = meta.get('colors', {'text': '#000000', 'headings': '#000000'})
+        layout_type = meta.get('layout', 'single_column')
         
-        # Create document with template margins
+        # Create document
         doc = SimpleDocTemplate(
             filepath, 
             pagesize=letter,
@@ -492,63 +488,16 @@ class ResumeGenerator:
         styles = getSampleStyleSheet()
         story = []
         
-        # Get font configs (default to Arial if not specified)
+        # Get font configs
         name_font = fonts.get('name', {'family': 'Helvetica', 'size': 16, 'bold': True})
         heading_font = fonts.get('heading', {'family': 'Helvetica', 'size': 11, 'bold': True})
         body_font = fonts.get('body', {'family': 'Helvetica', 'size': 10, 'bold': False})
         
-        # Convert colors
+        # Colors
         heading_color = HexColor(colors.get('headings', '#000000'))
         text_color = HexColor(colors.get('text', '#000000'))
         
-        # Name style with template font
-        name_style = ParagraphStyle(
-            'Name',
-            parent=styles['Title'],
-            fontName='Helvetica-Bold' if name_font.get('bold') else 'Helvetica',
-            fontSize=name_font.get('size', 16),
-            textColor=heading_color,
-            alignment=1,
-            spaceAfter=6 * line_spacing
-        )
-        story.append(Paragraph(resume_data.get('name', 'Your Name'), name_style))
-        
-        # Contact info with links
-        contact = resume_data.get('contact', {})
-        contact_parts = []
-        if contact.get('email'):
-            contact_parts.append(contact['email'])
-        if contact.get('phone'):
-            contact_parts.append(contact['phone'])
-        if contact.get('location'):
-            contact_parts.append(contact['location'])
-        
-        contact_text = ' | '.join([p for p in contact_parts if p])
-        contact_style = ParagraphStyle(
-            'Contact',
-            parent=styles['Normal'],
-            fontName='Helvetica',
-            fontSize=body_font.get('size', 10),
-            alignment=1,
-            spaceAfter=12 * line_spacing
-        )
-        story.append(Paragraph(contact_text, contact_style))
-        
-        # Add LinkedIn, GitHub, Portfolio links
-        links = []
-        if contact.get('linkedin'):
-            links.append(f'<a href="{contact["linkedin"]}">LinkedIn</a>')
-        if contact.get('github'):
-            links.append(f'<a href="{contact["github"]}">GitHub</a>')
-        if contact.get('portfolio'):
-            links.append(f'<a href="{contact["portfolio"]}">Portfolio</a>')
-        
-        if links:
-            links_text = ' | '.join(links)
-            story.append(Paragraph(links_text, contact_style))
-            story.append(Spacer(1, 0.1*inch * line_spacing))
-        
-        # Heading style
+        # Define Styles
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
@@ -558,7 +507,6 @@ class ResumeGenerator:
             spaceAfter=6 * line_spacing
         )
         
-        # Body style
         body_style = ParagraphStyle(
             'CustomBody',
             parent=styles['Normal'],
@@ -567,63 +515,152 @@ class ResumeGenerator:
             leading=body_font.get('size', 10) * line_spacing * 1.2,
             textColor=text_color
         )
-        
-        # Use section_order from _meta if available, otherwise default order
-        section_order = ['summary', 'experience', 'skills', 'education']
-        
-        for section in section_order:
-            if section == 'summary' and resume_data.get('summary'):
-                story.append(Paragraph('<b>PROFESSIONAL SUMMARY</b>', heading_style))
-                story.append(Paragraph(resume_data['summary'], body_style))
-                story.append(Spacer(1, 0.1*inch * line_spacing))
-            
-            elif section == 'experience' and resume_data.get('experience'):
-                story.append(Paragraph('<b>PROFESSIONAL EXPERIENCE</b>', heading_style))
-                for exp in resume_data['experience']:
-                    title_text = f"<b>{exp.get('title', '')}</b>"
-                    if exp.get('company'):
-                        title_text += f" | {exp['company']}"
-                    if exp.get('duration'):
-                        title_text += f" | {exp['duration']}"
-                    
-                    story.append(Paragraph(title_text, body_style))
-                    
-                    for detail in exp.get('details', []):
-                        story.append(Paragraph(f"• {detail}", body_style))
-                    
-                    story.append(Spacer(1, 0.04*inch * line_spacing))
-            
-            elif section == 'skills' and resume_data.get('skills'):
-                story.append(Paragraph('<b>SKILLS</b>', heading_style))
+
+        def create_section_content(sections_to_include):
+            content = []
+            for section in sections_to_include:
+                if section == 'summary' and resume_data.get('summary'):
+                    content.append(Paragraph('<b>PROFESSIONAL SUMMARY</b>', heading_style))
+                    content.append(Paragraph(resume_data['summary'], body_style))
+                    content.append(Spacer(1, 0.15*inch * line_spacing))
                 
-                skills_data = resume_data['skills']
+                elif section == 'experience' and resume_data.get('experience'):
+                    content.append(Paragraph('<b>PROFESSIONAL EXPERIENCE</b>', heading_style))
+                    for exp in resume_data['experience']:
+                        title_text = f"<b>{exp.get('title', '')}</b>"
+                        if exp.get('company'):
+                            title_text += f" | {exp['company']}"
+                        if exp.get('duration'):
+                            title_text += f" | {exp['duration']}"
+                        
+                        content.append(Paragraph(title_text, body_style))
+                        
+                        if exp.get('details'):
+                            for detail in exp['details']:
+                                content.append(Paragraph(f"• {detail}", body_style))
+                        content.append(Spacer(1, 0.08*inch))
+                    content.append(Spacer(1, 0.1*inch * line_spacing))
                 
-                # Check if skills is dict (categorized) or list (flat)
-                if isinstance(skills_data, dict):
-                    # Categorized: {"EdTech Tools": "H5P, Articulate...", "AI & Development": "Python..."}
-                    for category, skills_content in skills_data.items():
-                        category_line = f"• <b>{category}:</b> {skills_content}"
-                        story.append(Paragraph(category_line, body_style))
-                elif isinstance(skills_data, list):
-                    # Flat list - group every 10 per line  
-                    chunk_size = 10
-                    for i in range(0, len(skills_data), chunk_size):
-                        chunk = skills_data[i:i+chunk_size]
-                        story.append(Paragraph(f"• {', '.join(chunk)}", body_style))
-                else:
-                    # String fallback
-                    story.append(Paragraph(f"• {str(skills_data)}", body_style))
+                elif section == 'education' and resume_data.get('education'):
+                    content.append(Paragraph('<b>EDUCATION</b>', heading_style))
+                    for edu in resume_data['education']:
+                        content.append(Paragraph(f"<b>{edu.get('title', '')}</b>", body_style))
+                        if edu.get('details'):
+                            for detail in edu['details']:
+                                content.append(Paragraph(str(detail), body_style))
+                        content.append(Spacer(1, 0.05*inch))
+                    content.append(Spacer(1, 0.1*inch * line_spacing))
                 
-                story.append(Spacer(1, 0.05*inch * line_spacing))
-            
-            elif section == 'education' and resume_data.get('education'):
-                story.append(Paragraph('<b>EDUCATION</b>', heading_style))
-                for edu in resume_data['education']:
-                    story.append(Paragraph(f"<b>{edu.get('title', '')}</b>", body_style))
-                    for detail in edu.get('details', []):
-                        story.append(Paragraph(detail, body_style))
-                    story.append(Spacer(1, 0.04*inch * line_spacing))
+                elif section == 'skills' and resume_data.get('skills'):
+                    content.append(Paragraph('<b>SKILLS</b>', heading_style))
+                    skills_data = resume_data['skills']
+                    if isinstance(skills_data, dict):
+                        for category, skills_content in skills_data.items():
+                            content.append(Paragraph(f"• <b>{category}:</b> {skills_content}", body_style))
+                    elif isinstance(skills_data, list):
+                        chunk_size = 10
+                        for i in range(0, len(skills_data), chunk_size):
+                            chunk = skills_data[i:i+chunk_size]
+                            content.append(Paragraph(f"• {', '.join(chunk)}", body_style))
+                    else:
+                        content.append(Paragraph(f"• {str(skills_data)}", body_style))
+                    content.append(Spacer(1, 0.1*inch * line_spacing))
+                    
+                elif section == 'contact' and resume_data.get('contact'):
+                     # Contact in column usually rendered differently, but for now reuse header logic or simplify
+                    contact = resume_data.get('contact', {})
+                    if contact.get('email'): content.append(Paragraph(contact['email'], body_style))
+                    if contact.get('phone'): content.append(Paragraph(contact['phone'], body_style))
+                    if contact.get('location'): content.append(Paragraph(contact['location'], body_style))
+                    if contact.get('linkedin'): content.append(Paragraph(f'<a href="{contact["linkedin"]}">LinkedIn</a>', body_style))
+                    content.append(Spacer(1, 0.1*inch * line_spacing))
+
+            return content
+
+        # --- HEADER (NAME) ---
+        name_style = ParagraphStyle(
+            'Name',
+            parent=styles['Title'],
+            fontName='Helvetica-Bold' if name_font.get('bold') else 'Helvetica',
+            fontSize=name_font.get('size', 16),
+            textColor=heading_color,
+            alignment=1, # Center
+            spaceAfter=6 * line_spacing
+        )
+        story.append(Paragraph(resume_data.get('name', 'Your Name'), name_style))
         
+        # Header Contact (Only for single column or if not in side column)
+        # Note: In two-column, contact often moves to side. checking layout.
+        
+        if layout_type == 'two_column' and 'contact' in meta.get('left_column', []):
+             # Contact will be in left column, don't show in header
+             pass
+        else:
+             # Standard Header Contact
+            contact = resume_data.get('contact', {})
+            contact_parts = []
+            if contact.get('email'): contact_parts.append(contact['email'])
+            if contact.get('phone'): contact_parts.append(contact['phone'])
+            if contact.get('location'): contact_parts.append(contact['location'])
+            
+            contact_text = ' | '.join([p for p in contact_parts if p])
+            contact_style = ParagraphStyle(
+                'Contact',
+                parent=styles['Normal'],
+                fontName='Helvetica',
+                fontSize=body_font.get('size', 10),
+                alignment=1,
+                spaceAfter=12 * line_spacing
+            )
+            story.append(Paragraph(contact_text, contact_style))
+            
+            links = []
+            if contact.get('linkedin'): links.append(f'<a href="{contact["linkedin"]}">LinkedIn</a>')
+            if contact.get('github'): links.append(f'<a href="{contact["github"]}">GitHub</a>')
+            if contact.get('portfolio'): links.append(f'<a href="{contact["portfolio"]}">Portfolio</a>')
+            
+        if links:
+            links_text = ' | '.join(links)
+            story.append(Paragraph(links_text, contact_style))
+            story.append(Spacer(1, 0.1*inch * line_spacing))
+
+        # --- BODY LAYOUT ---
+        if layout_type == 'two_column':
+            # Get column definitions
+            left_sections = meta.get('left_column', ['skills', 'education'])
+            right_sections = meta.get('right_column', ['summary', 'experience'])
+            left_width = meta.get('left_width', 0.35)
+            right_width = meta.get('right_width', 0.65)
+            
+            # Generate styled content for each column
+            left_story = create_section_content(left_sections)
+            right_story = create_section_content(right_sections)
+            
+            # Calculate table width
+            avail_width = doc.width
+            col1_width = avail_width * left_width - 0.1*inch # gap
+            col2_width = avail_width * right_width
+            
+            # Create Table
+            data = [[left_story, right_story]]
+            tbl = Table(data, colWidths=[col1_width, col2_width])
+            
+            tbl.setStyle(TableStyle([
+                ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                ('LEFTPADDING', (0,0), (0,0), 0),
+                ('RIGHTPADDING', (0,0), (0,0), 10),
+                ('LEFTPADDING', (1,0), (1,0), 10),
+                ('RIGHTPADDING', (1,0), (1,0), 0),
+            ]))
+            
+            story.append(tbl)
+            
+        else:
+            # SINGLE COLUMN (Standard)
+            section_order = meta.get('section_order', ['summary', 'experience', 'skills', 'education'])
+            content = create_section_content(section_order)
+            story.extend(content)
+
         # Build PDF
         doc.build(story)
         app_logger.info(f"PDF exported to {filepath}")
