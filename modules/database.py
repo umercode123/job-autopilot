@@ -166,12 +166,12 @@ class Job(Base):
     
     # NEW: Resume Export fields (Phase 2)
     selected_template = Column(String(50))  # e.g., "classic_single_column"
-    resume_version_id = Column(Integer, ForeignKey("resume_versions.id"))
+    # NOTE: resume_version_id removed - ResumeVersion table references Job via job_id
     
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    resume_versions = relationship("ResumeVersion", back_populates="job", cascade="all, delete-orphan", foreign_keys="[ResumeVersion.job_id]")
+    resume_versions = relationship("ResumeVersion", back_populates="job", cascade="all, delete-orphan")
     applications = relationship("Application", back_populates="job", cascade="all, delete-orphan")
 
 class ResumeVersion(Base):

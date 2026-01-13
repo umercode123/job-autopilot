@@ -286,27 +286,43 @@ class JobScraper:
             return 0
         
         saved_count = 0
+        skipped_count = 0
+        failed_count = 0
         
         try:
-            for job_data in jobs:
-                # Check if job already exists (by URL)
-                existing = db.query(Job).filter(Job.job_url == job_data["job_url"]).first()
-                
-                if existing:
-                    scraper_logger.debug(f"Job already exists: {job_data['title']}")
+            for i, job_data in enumerate(jobs, 1):
+                try:
+                    # Check if job already exists (by URL)
+                    existing = db.query(Job).filter(Job.job_url == job_data["job_url"]).first()
+                    
+                    if existing:
+                        scraper_logger.debug(f"Job {i}/{len(jobs)} already exists: {job_data['title']}")
+                        skipped_count += 1
+                        continue
+                    
+                    # Create new job
+                    new_job = Job(**job_data)
+                    db.add(new_job)
+                    saved_count += 1
+                    scraper_logger.info(f"Added job {i}/{len(jobs)}: {job_data['title']} at {job_data['company']}")
+                    
+                except Exception as job_error:
+                    failed_count += 1
+                    scraper_logger.error(f"Failed to add job {i}/{len(jobs)}: {job_error}", exc_info=True)
+                    scraper_logger.error(f"Problematic job data keys: {list(job_data.keys())}")
                     continue
-                
-                # Create new job
-                new_job = Job(**job_data)
-                db.add(new_job)
-                saved_count += 1
             
             db.commit()
-            scraper_logger.info(f"Saved {saved_count} new jobs to database")
+            
+            # Summary logging
+            scraper_logger.info(f"Database save summary: {saved_count} saved, {skipped_count} skipped (duplicate), {failed_count} failed")
+            
+            if saved_count == 0 and skipped_count > 0:
+                scraper_logger.warning(f"All {skipped_count} jobs already exist in database!")
             
         except Exception as e:
             db.rollback()
-            scraper_logger.error(f"Failed to save jobs to database: {e}", exc_info=True)
+            scraper_logger.error(f"Database commit failed: {e}", exc_info=True)
         
         finally:
             db.close()
