@@ -7,7 +7,7 @@ from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from apify_client import ApifyClient
-from modules.database import Job, SessionLocal
+from modules.database import Job, Application, SessionLocal
 from modules.cache_manager import cache_manager
 from modules.logger_config import scraper_logger
 
@@ -33,7 +33,8 @@ class JobScraper:
         location: str = "Ontario, Canada",
         max_jobs: int = 20,
         job_type: str = "fulltime",
-        remote: str = "hybrid"
+        remote: str = "hybrid",
+        days_ago: int = 7  # Allow configuring days
     ) -> List[Dict]:
         """
         Scrape jobs from Indeed
@@ -44,6 +45,7 @@ class JobScraper:
             max_jobs: Maximum number of jobs to scrape
             job_type: Job type (fulltime, parttime, contract)
             remote: Remote status (remote, hybrid, onsite)
+            days_ago: Fetch jobs posted within last N days (default 7)
         
         Returns:
             list: Job data dictionaries
@@ -52,7 +54,7 @@ class JobScraper:
         if not keywords:
             keywords = os.getenv("DEFAULT_KEYWORDS", "Instructional Design, L&D, EdTech")
         
-        scraper_logger.info(f"Starting job scrape: {keywords} in {location}")
+        scraper_logger.info(f"Starting job scrape: {keywords} in {location} (Last {days_ago} days)")
         
         # Apify actor input
         run_input = {
@@ -63,7 +65,9 @@ class JobScraper:
             "jobType": job_type,
             "remote": remote,
             "enableUniqueJobs": True,
-            "fromAge": "7"  # NEW: Only jobs posted in last 7 days
+            "maxAge": days_ago,   # Common parameter name for scrapers
+            "fromAge": days_ago,  # Indeed URL parameter name
+            "publishedWithinDays": days_ago  # Another common variant
         }
         
         try:
@@ -303,6 +307,9 @@ class JobScraper:
                     # Create new job
                     new_job = Job(**job_data)
                     db.add(new_job)
+                    db.flush()  # Generate ID
+                    job_data['id'] = new_job.id  # Update original dict with ID
+                    
                     saved_count += 1
                     scraper_logger.info(f"Added job {i}/{len(jobs)}: {job_data['title']} at {job_data['company']}")
                     
@@ -332,6 +339,7 @@ class JobScraper:
     def get_recent_jobs(self, days: int = 3) -> List[Job]:
         """
         Get jobs posted within last N days
+        Uses created_at as fallback if posted_date is NULL
         
         Args:
             days: Number of days to look back
@@ -342,9 +350,87 @@ class JobScraper:
         db = SessionLocal()
         try:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
-            jobs = db.query(Job).filter(Job.posted_date >= cutoff_date).all()
+            # Use created_at as fallback if posted_date is NULL
+            jobs = db.query(Job).filter(
+                (Job.posted_date >= cutoff_date) | 
+                ((Job.posted_date == None) & (Job.created_at >= cutoff_date))
+            ).all()
             scraper_logger.info(f"Retrieved {len(jobs)} jobs from last {days} days")
             return jobs
+        finally:
+            db.close()
+    
+    def get_all_jobs(self, limit: int = 100, exclude_applied: bool = True) -> List[Job]:
+        """
+        Get all jobs from database
+        
+        Args:
+            limit: Maximum number of jobs to return
+            exclude_applied: If True, exclude jobs that have been marked as applied
+        
+        Returns:
+            list: Job objects
+        """
+        db = SessionLocal()
+        try:
+            query = db.query(Job)
+            
+            if exclude_applied:
+                # Subquery to find IDs of jobs that have been applied to
+                applied_job_ids = db.query(Application.job_id).filter(
+                    Application.status == 'applied'
+                ).distinct()
+                
+                # Filter out these jobs
+                query = query.filter(Job.id.notin_(applied_job_ids))
+            
+            # Order by most recently created
+            jobs = query.order_by(Job.created_at.desc()).limit(limit).all()
+            
+            scraper_logger.info(f"Retrieved {len(jobs)} jobs from database (exclude_applied={exclude_applied})")
+            return jobs
+        finally:
+            db.close()
+
+    def mark_job_as_applied(self, job_id: int, applied: bool = True) -> bool:
+        """
+        Mark a job as applied (or unmark it)
+        
+        Args:
+            job_id: ID of the job
+            applied: True to mark as applied, False to remove application
+            
+        Returns:
+            bool: Success status
+        """
+        db = SessionLocal()
+        try:
+            # Check if application exists
+            application = db.query(Application).filter(Application.job_id == job_id).first()
+            
+            if applied:
+                if application:
+                    application.status = 'applied'
+                    application.updated_at = datetime.utcnow()
+                else:
+                    new_app = Application(
+                        job_id=job_id,
+                        status='applied',
+                        email_stage='manual_web', # creating via checkbox
+                        created_at=datetime.utcnow()
+                    )
+                    db.add(new_app)
+            else:
+                # If unmarking, we set back to 'to_apply'
+                if application:
+                    application.status = 'to_apply'
+            
+            db.commit()
+            return True
+        except Exception as e:
+            scraper_logger.error(f"Failed to update application status for job {job_id}: {e}")
+            db.rollback()
+            return False
         finally:
             db.close()
 

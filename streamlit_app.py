@@ -60,6 +60,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def update_application_status(job_id, key):
+    """Callback to update job application status"""
+    if st.session_state.get(key):
+        scraper = JobScraper()
+        # Ensure job_id is an integer
+        try:
+            job_id_int = int(job_id)
+            scraper.mark_job_as_applied(job_id_int, applied=True)
+            st.toast(f"✅ Job marked as applied!")
+        except ValueError:
+            st.error(f"Invalid job ID: {job_id}")
+
 # Session state initialization
 if 'jobs' not in st.session_state:
     st.session_state.jobs = []
@@ -317,15 +329,16 @@ if page == "🔍 Job Search":
     elif load_cached_clicked:
         with st.spinner("Loading cached jobs from database..."):
             try:
-                # Load from database
+                # Load from database - get ALL jobs (not just recent)
                 scraper = JobScraper()
-                cached_jobs = scraper.get_recent_jobs(days=7)  # Last 7 days
+                cached_jobs = scraper.get_all_jobs(limit=1000, exclude_applied=True)  # Get all jobs, filtering applied
                 
                 if cached_jobs:
                     # Convert SQLAlchemy objects to dicts
                     jobs = []
                     for job in cached_jobs:
                         job_dict = {
+                            "id": job.id,  # Include ID for application tracking
                             "title": job.title,
                             "company": job.company,
                             "description": job.description,
@@ -421,6 +434,12 @@ if page == "🔍 Job Search":
                 with cols[1]:
                     st.markdown(f'<div class="score-badge {badge_class}">{score}/10</div>', unsafe_allow_html=True)
                     st.markdown("")
+                    
+                    # Applied Checkbox (Only if job has ID from database)
+                    if job.get('id'):
+                        cb_key = f"applied_{job.get('id')}"
+                        st.checkbox("✅ Applied", key=cb_key, on_change=update_application_status, args=(job.get('id'), cb_key))
+                        st.markdown("")
                     
                     # Use job_url as unique key (Apify jobs don't have 'id' field)
                     job_key = job.get('job_url', '').replace('/', '_').replace(':', '')[-50:]

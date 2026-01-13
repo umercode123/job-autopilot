@@ -201,3 +201,5 @@ Thumbs.db
 *private*
 gmail_credentials.json
 gmail_token.json
+
+logs/
