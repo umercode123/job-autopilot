@@ -378,7 +378,40 @@ if page == "🔍 Job Search":
                 with cols[0]:
                     st.markdown(f"#### {job.get('title', 'Unknown')}")
                     st.markdown(f"**{job.get('company', 'Unknown')}** • {job.get('location', 'N/A')}")
-                    st.markdown(f"💰 {job.get('salary', 'Not specified')} | 🏠 {'Remote' if job.get('is_remote') else 'On-site'}")
+                    
+                    # Date and salary info
+                    salary_info = f"💰 {job.get('salary', 'Not specified')}"
+                    remote_info = f"🏠 {'Remote' if job.get('is_remote') else 'On-site'}"
+                    
+                    # Posted date
+                    posted_info = ""
+                    if job.get('job_age'):
+                        posted_info = f"📅 Posted {job.get('job_age')}"
+                    elif job.get('posted_date'):
+                        posted_date = job.get('posted_date')
+                        if isinstance(posted_date, str):
+                            posted_info = f"📅 Posted {posted_date[:10]}"
+                        else:
+                            posted_info = f"📅 Posted {str(posted_date)[:10]}"
+                    
+                    # Expiration date
+                    exp_info = ""
+                    if job.get('expiration_date'):
+                        exp_date = job.get('expiration_date')
+                        if isinstance(exp_date, str):
+                            exp_info = f"⏰ Expires {exp_date[:10]}"
+                        else:
+                            exp_info = f"⏰ Expires {str(exp_date)[:10]}"
+                    
+                    # Combine all metadata
+                    metadata_parts = [salary_info, remote_info, posted_info, exp_info]
+                    metadata = " | ".join([p for p in metadata_parts if p])
+                    st.markdown(metadata)
+                    
+                    # Apply URL button
+                    apply_url = job.get('apply_url') or job.get('job_url')
+                    if apply_url:
+                        st.markdown(f"[🔗 Apply Now]({apply_url})", unsafe_allow_html=False)
                     
                     with st.expander("📄 Description"):
                         st.write(job.get('description', 'No description')[:500] + "...")

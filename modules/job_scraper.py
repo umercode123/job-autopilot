@@ -162,8 +162,23 @@ class JobScraper:
                 "Company Not Listed"
             )
             
-            # Extract location
-            location = raw_job.get("location") or raw_job.get("jobLocation", {}).get("address") or "Remote"
+            # Extract location - ensure it's always a string
+            location_raw = raw_job.get("location") or raw_job.get("jobLocation")
+            
+            if isinstance(location_raw, dict):
+                # Location is a dict, extract city from it
+                location = (
+                    location_raw.get("city") or 
+                    location_raw.get("formattedAddressShort") or
+                    location_raw.get("formattedAddress") or
+                    location_raw.get("address") or
+                    "Remote"
+                )
+            elif isinstance(location_raw, str):
+                # Location is already a string
+                location = location_raw
+            else:
+                location = "Remote"
             
             # Extract salary - handle both dict and string formats
             salary = "Not specified"

@@ -58,8 +58,6 @@ data/emails/*.html
 data/emails/*.txt
 
 # Logs
-logs/*.log
-*.log
 
 # Database
 *.db
