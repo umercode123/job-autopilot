@@ -308,13 +308,13 @@ class ResumeGenerator:
 {json.dumps(master_resume, indent=2)}
 
 **Requirements**:
-1. Extract key skills/keywords from JD
-2. Reorder/emphasize relevant experience
-3. Add job-specific keywords naturally
-4. Keep 1-page length (max 600 words)
-5. Maintain truthfulness (don't fabricate)
-6. Use action verbs and quantifiable achievements
-7. Return JSON format matching master resume structure
+1. Extract key skills/keywords from JD.
+2. Reorder/emphasize relevant experience.
+3. Add job-specific keywords naturally.
+4. **IMPORTANT: If description is brief, EXPAND it using relevant industry keywords and standard responsibilities found in the JD.**
+5. Keep 1-page length (approx 450-600 words).
+6. Use action verbs and quantifiable achievements.
+7. Return JSON format matching master resume structure.
 
 **Output JSON** (experience items should include company, role, duration, bullets):
 """
@@ -707,6 +707,10 @@ class ResumeGenerator:
         Returns:
             dict: Resume with template metadata
         """
+        if not template:
+            app_logger.warning("apply_template received None template, returning original data")
+            return resume_data
+
         # Reorder sections based on template
         ordered_resume = {}
         for section in template['section_order']:
@@ -721,6 +725,7 @@ class ResumeGenerator:
         # Add template metadata
         ordered_resume['_meta'] = {
             'template': template['name'],
+            'section_order': template['section_order'], # IMPORTANT: Persist section order for PDF generation
             'line_spacing': template.get('line_spacing', 1.0),
             'fonts': template.get('fonts', {}),
             'margins': template.get('margins', {}),

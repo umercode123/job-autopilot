@@ -153,7 +153,7 @@ class Job(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    resume_versions = relationship("ResumeVersion", back_populates="job", cascade="all, delete-orphan")
+    resume_versions = relationship("ResumeVersion", back_populates="job", cascade="all, delete-orphan", foreign_keys="[ResumeVersion.job_id]")
     applications = relationship("Application", back_populates="job", cascade="all, delete-orphan")
 
 class ResumeVersion(Base):
