@@ -9,10 +9,12 @@ from dotenv import load_dotenv
 from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, ListFlowable, ListItem, Image
+from reportlab.lib.units import inch, mm
+from reportlab.lib.colors import HexColor, white, black, lightgrey
+from reportlab.graphics.shapes import Drawing, Line
 from modules.ai_agent import ai_agent
 from modules.logger_config import app_logger
 
@@ -459,213 +461,318 @@ class ResumeGenerator:
     
     def export_pdf(self, resume_data: Dict, filename: str) -> str:
         """
-        Export resume to PDF format with template styling
-        Supports Single Column and Two Column layouts
+        Export resume to PDF with template-specific layout engine
         """
-        from reportlab.lib.colors import HexColor
-        from reportlab.platypus import Table, TableStyle
-        
         filepath = os.path.join(self.output_dir, filename)
         
-        # Extract template metadata
-        meta = resume_data.get('_meta', {})
-        fonts = meta.get('fonts', {})
-        margins = meta.get('margins', {'top': 0.5, 'bottom': 0.5, 'left': 0.7, 'right': 0.7})
-        line_spacing = meta.get('line_spacing', 1.0)
-        colors = meta.get('colors', {'text': '#000000', 'headings': '#000000'})
-        layout_type = meta.get('layout', 'single_column')
+        # Determine layout engine
+        template_name = resume_data.get('_meta', {}).get('template', 'classic_single_column')
         
-        # Create document
+        try:
+            if "modern" in template_name:
+                self._create_modern_layout(resume_data, filepath)
+            else:
+                self._create_classic_layout(resume_data, filepath)
+                
+            app_logger.info(f"PDF exported to {filepath} using {template_name} layout")
+            return filepath
+        except Exception as e:
+            app_logger.error(f"PDF generation failed: {e}", exc_info=True)
+            # Fallback to classic if modern fails
+            try:
+                self._create_classic_layout(resume_data, filepath)
+                return filepath
+            except:
+                return ""
+
+    def _create_classic_layout(self, resume_data: Dict, filepath: str):
+        """
+        Classic Serif Layout (Resume Matcher Style)
+        - Times New Roman
+        - Horizontal lines under headers
+        - Right-aligned dates
+        """
         doc = SimpleDocTemplate(
-            filepath, 
-            pagesize=letter,
-            topMargin=margins.get('top', 0.5)*inch,
-            bottomMargin=margins.get('bottom', 0.5)*inch,
-            leftMargin=margins.get('left', 0.7)*inch,
-            rightMargin=margins.get('right', 0.7)*inch
+            filepath,
+            pagesize=A4,
+            topMargin=0.5*inch, bottomMargin=0.5*inch,
+            leftMargin=0.5*inch, rightMargin=0.5*inch
         )
         
         styles = getSampleStyleSheet()
         story = []
         
-        # Get font configs
-        name_font = fonts.get('name', {'family': 'Helvetica', 'size': 16, 'bold': True})
-        heading_font = fonts.get('heading', {'family': 'Helvetica', 'size': 11, 'bold': True})
-        body_font = fonts.get('body', {'family': 'Helvetica', 'size': 10, 'bold': False})
+        # Fonts
+        title_font = 'Times-Bold'
+        body_font = 'Times-Roman'
+        
+        # Styles
+        style_name = ParagraphStyle(
+            'Name', 
+            parent=styles['Normal'], 
+            fontName=title_font, 
+            fontSize=24, 
+            leading=28,  # Critical fix for overlap
+            alignment=1, 
+            spaceAfter=12 # Critical fix for overlap
+        )
+        style_role = ParagraphStyle('Role', parent=styles['Normal'], fontName=body_font, fontSize=11, alignment=1, textColor=HexColor('#555555'), spaceAfter=6)
+        style_contact = ParagraphStyle(
+            'Contact', 
+            parent=styles['Normal'], 
+            fontName=body_font, 
+            fontSize=10, 
+            alignment=1, 
+            spaceAfter=12
+        )
+        
+        style_section = ParagraphStyle('Section', parent=styles['Normal'], fontName=title_font, fontSize=12, spaceBefore=12, spaceAfter=4, textTransform='uppercase')
+        style_job_title = ParagraphStyle('JobTitle', parent=styles['Normal'], fontName='Times-Bold', fontSize=10.5)
+        style_job_meta = ParagraphStyle('JobMeta', parent=styles['Normal'], fontName=body_font, fontSize=10.5, alignment=2) # Right align
+        style_bullet = ParagraphStyle('Bullet', parent=styles['Normal'], fontName=body_font, fontSize=10, leading=13, leftIndent=12, bulletIndent=0)
+        
+        def draw_line(width):
+            d = Drawing(width, 1)
+            d.add(Line(0, 0, width, 0))
+            return d
+
+        # --- HEADER ---
+        story.append(Paragraph(resume_data.get('name', 'YOUR NAME').upper(), style_name))
+        
+        # Contact Line
+        contact = resume_data.get('contact', {})
+        parts = []
+        if contact.get('email'): parts.append(contact['email'])
+        if contact.get('phone'): parts.append(contact['phone'])
+        if contact.get('location'): parts.append(contact['location'])
+        if contact.get('linkedin'): parts.append(f'<a href="{contact["linkedin"]}">LinkedIn</a>')
+        if contact.get('portfolio'): parts.append(f'<a href="{contact["portfolio"]}">Portfolio</a>')
+        if contact.get('github'): parts.append(f'<a href="{contact["github"]}">Other</a>')
+        
+        story.append(Paragraph(" • ".join(parts), style_contact))
+        
+        # Line Divider
+        story.append(draw_line(500))
+        story.append(Spacer(1, 10))
+
+        # --- SECTIONS ---
+        order = resume_data.get('_meta', {}).get('section_order', ['summary', 'experience', 'skills', 'education'])
+        
+        for section in order:
+            if section == 'summary' and resume_data.get('summary'):
+                story.append(Paragraph("SUMMARY", style_section))
+                # Removed line under Summary as requested
+                story.append(Spacer(1, 4))
+                story.append(Paragraph(resume_data['summary'], ParagraphStyle('Sum', parent=style_bullet, leftIndent=0)))
+            
+            elif section == 'experience' and resume_data.get('experience'):
+                story.append(Paragraph("EXPERIENCE", style_section))
+                story.append(draw_line(500))
+                story.append(Spacer(1, 6))
+                
+                for exp in resume_data['experience']:
+                    # Job Header Table (Left: Title/Company, Right: Date/Location)
+                    # Row 1: Company (Left) | Date (Right)
+                    # Row 2: Title (Left)   | Location (Right)
+                    
+                    c1 = [Paragraph(f"<b>{exp.get('company','')}</b>", style_job_title)]
+                    c2 = [Paragraph(exp.get('duration',''), style_job_meta)]
+                    
+                    t1 = Table([[c1, c2]], colWidths=[4.5*inch, 2.5*inch])
+                    t1.setStyle(TableStyle([('ALIGN', (1,0), (1,0), 'RIGHT'), ('VALIGN', (0,0), (-1,-1), 'TOP')]))
+                    story.append(t1)
+                    
+                    c3 = [Paragraph(f"<i>{exp.get('title','')}</i>", ParagraphStyle('Italic', parent=style_job_title, fontName='Times-Italic'))]
+                    c4 = [Paragraph(contact.get('location', ''), style_job_meta)]
+                    t2 = Table([[c3, c4]], colWidths=[5.5*inch, 1.5*inch]) 
+                    # FIX: Append t2 (Job Title row) which was missing
+                    story.append(t2) 
+                    story.append(Spacer(1, 1))
+
+                    for detail in exp.get('details', []):
+                        story.append(Paragraph(f"• {detail}", style_bullet))
+                    story.append(Spacer(1, 8))
+
+            elif section == 'skills' and resume_data.get('skills'):
+                story.append(Paragraph("SKILLS", style_section))
+                story.append(draw_line(500))
+                story.append(Spacer(1, 4))
+                
+                # Render skills line by line
+                skills_data = resume_data['skills']
+                
+                # Ensure it is a list
+                if isinstance(skills_data, str):
+                     skills_data = [skills_data]
+                elif isinstance(skills_data, dict):
+                     # Fallback if somehow dict passed (should be converted by UI now)
+                     skills_data = [f"{k}: {v}" for k,v in skills_data.items()]
+                     
+                for skill_line in skills_data:
+                    # Format: "Category: Skill, Skill" -> "<b>Category</b>: Skill, Skill"
+                    text = str(skill_line)
+                    if ":" in text:
+                        parts = text.split(":", 1)
+                        formatted_text = f"<b>{parts[0]}</b>:{parts[1]}"
+                    else:
+                        formatted_text = text
+                        
+                    story.append(Paragraph(formatted_text, style_bullet))
+
+                        
+            elif section == 'projects' and resume_data.get('projects'):
+                story.append(Paragraph("PROJECTS", style_section))
+                story.append(draw_line(500))
+                story.append(Spacer(1, 4))
+                
+                # Projects Logic (Handle both List[str] and List[Dict])
+                projects = resume_data['projects']
+                for proj in projects:
+                    if isinstance(proj, dict):
+                        # Structured Project
+                        p_title = f"<b>{proj.get('title', 'Project')}</b>"
+                        if proj.get('link'):
+                            p_title += f" | <a href='{proj['link']}'>Link</a>"
+                        
+                        # Row: Title (Left) | Tech Stack or Date (Right)
+                        c1 = [Paragraph(p_title, style_bullet)]
+                        c2 = [Paragraph(proj.get('tech_stack', ''), style_job_meta)]
+                        t = Table([[c1, c2]], colWidths=[5*inch, 2*inch])
+                        story.append(t)
+                        
+                        if proj.get('details'):
+                            for d in proj['details']:
+                                story.append(Paragraph(f"• {d}", style_bullet))
+                    else:
+                        # Simple String Project
+                        story.append(Paragraph(f"• {str(proj)}", style_bullet))
+                    
+                    story.append(Spacer(1, 4))
+
+            elif section == 'education' and resume_data.get('education'):
+                story.append(Paragraph("EDUCATION", style_section))
+                story.append(draw_line(500))
+                story.append(Spacer(1, 6))
+                
+                for edu in resume_data['education']:
+                    title_line = f"<b>{edu.get('title','')}</b>"
+                    # Append Institution and Date if available, e.g. "Master of X | University, 2024"
+                    # But often title has degree, details has uni. Let's keep it simple or strictly follow JSON.
+                    # Current JSON structure usually puts Uni in 'details'.
+                    
+                    c1 = Paragraph(title_line, style_job_title)
+                    story.append(c1)
+                    if edu.get('details'):
+                        for d in edu['details']:
+                             story.append(Paragraph(d, style_bullet))
+                    story.append(Spacer(1, 4))
+        
+        doc.build(story)
+
+    def _create_modern_layout(self, resume_data: Dict, filepath: str):
+        """
+        Modern Sidebar Layout
+        - Helvetica/Sans-Serif
+        - Dark Sidebar (Left) with Contact & Skills
+        - Light Main Content (Right) with Summary & Experience
+        """
+        doc = SimpleDocTemplate(
+            filepath,
+            pagesize=A4,
+            topMargin=0, bottomMargin=0, leftMargin=0, rightMargin=0 # Handled by Table
+        )
+        
+        styles = getSampleStyleSheet()
         
         # Colors
-        heading_color = HexColor(colors.get('headings', '#000000'))
-        text_color = HexColor(colors.get('text', '#000000'))
+        bg_color = HexColor('#2C3E50') # Midnight Blue
+        text_white = HexColor('#FFFFFF')
+        text_dark = HexColor('#2c3e50')
         
-        # Define Styles
-        heading_style = ParagraphStyle(
-            'CustomHeading',
-            parent=styles['Heading2'],
-            fontName='Helvetica-Bold' if heading_font.get('bold') else 'Helvetica',
-            fontSize=heading_font.get('size', 11),
-            textColor=heading_color,
-            spaceAfter=6 * line_spacing
-        )
+        # Styles
+        style_sidebar_text = ParagraphStyle('Side', fontName='Helvetica', fontSize=9, textColor=text_white, leading=14)
+        style_sidebar_header = ParagraphStyle('SideHead', fontName='Helvetica-Bold', fontSize=11, textColor=text_white, spaceBefore=10, spaceAfter=4)
+        style_main_header = ParagraphStyle('MainHead', fontName='Helvetica-Bold', fontSize=22, textColor=text_dark, spaceAfter=8)
+        style_role = ParagraphStyle('Role', fontName='Helvetica', fontSize=12, textColor=HexColor('#7f8c8d'), spaceAfter=18)
+        style_section = ParagraphStyle('Sec', fontName='Helvetica-Bold', fontSize=12, textColor=text_dark, spaceBefore=12, spaceAfter=6, textTransform='uppercase')
+        style_job = ParagraphStyle('Job', fontName='Helvetica-Bold', fontSize=11, textColor=black)
+        style_bullet = ParagraphStyle('Bull', fontName='Helvetica', fontSize=9.5, leading=13, leftIndent=10, textColor=black)
         
-        body_style = ParagraphStyle(
-            'CustomBody',
-            parent=styles['Normal'],
-            fontName='Helvetica',
-            fontSize=body_font.get('size', 10),
-            leading=body_font.get('size', 10) * line_spacing * 1.2,
-            textColor=text_color
-        )
-
-        def create_section_content(sections_to_include):
-            content = []
-            for section in sections_to_include:
-                if section == 'summary' and resume_data.get('summary'):
-                    content.append(Paragraph('<b>PROFESSIONAL SUMMARY</b>', heading_style))
-                    content.append(Paragraph(resume_data['summary'], body_style))
-                    content.append(Spacer(1, 0.15*inch * line_spacing))
-                
-                elif section == 'experience' and resume_data.get('experience'):
-                    content.append(Paragraph('<b>PROFESSIONAL EXPERIENCE</b>', heading_style))
-                    for exp in resume_data['experience']:
-                        title_text = f"<b>{exp.get('title', '')}</b>"
-                        if exp.get('company'):
-                            title_text += f" | {exp['company']}"
-                        if exp.get('duration'):
-                            title_text += f" | {exp['duration']}"
-                        
-                        content.append(Paragraph(title_text, body_style))
-                        
-                        if exp.get('details'):
-                            for detail in exp['details']:
-                                content.append(Paragraph(f"• {detail}", body_style))
-                        content.append(Spacer(1, 0.08*inch))
-                    content.append(Spacer(1, 0.1*inch * line_spacing))
-                
-                elif section == 'education' and resume_data.get('education'):
-                    content.append(Paragraph('<b>EDUCATION</b>', heading_style))
-                    for edu in resume_data['education']:
-                        content.append(Paragraph(f"<b>{edu.get('title', '')}</b>", body_style))
-                        if edu.get('details'):
-                            for detail in edu['details']:
-                                content.append(Paragraph(str(detail), body_style))
-                        content.append(Spacer(1, 0.05*inch))
-                    content.append(Spacer(1, 0.1*inch * line_spacing))
-                
-                elif section == 'skills' and resume_data.get('skills'):
-                    content.append(Paragraph('<b>SKILLS</b>', heading_style))
-                    skills_data = resume_data['skills']
-                    if isinstance(skills_data, dict):
-                        for category, skills_content in skills_data.items():
-                            content.append(Paragraph(f"• <b>{category}:</b> {skills_content}", body_style))
-                    elif isinstance(skills_data, list):
-                        chunk_size = 10
-                        for i in range(0, len(skills_data), chunk_size):
-                            chunk = skills_data[i:i+chunk_size]
-                            content.append(Paragraph(f"• {', '.join(chunk)}", body_style))
-                    else:
-                        content.append(Paragraph(f"• {str(skills_data)}", body_style))
-                    content.append(Spacer(1, 0.1*inch * line_spacing))
-                    
-                elif section == 'contact' and resume_data.get('contact'):
-                     # Contact in column usually rendered differently, but for now reuse header logic or simplify
-                    contact = resume_data.get('contact', {})
-                    if contact.get('email'): content.append(Paragraph(contact['email'], body_style))
-                    if contact.get('phone'): content.append(Paragraph(contact['phone'], body_style))
-                    if contact.get('location'): content.append(Paragraph(contact['location'], body_style))
-                    if contact.get('linkedin'): content.append(Paragraph(f'<a href="{contact["linkedin"]}">LinkedIn</a>', body_style))
-                    content.append(Spacer(1, 0.1*inch * line_spacing))
-
-            return content
-
-        # --- HEADER (NAME) ---
-        name_style = ParagraphStyle(
-            'Name',
-            parent=styles['Title'],
-            fontName='Helvetica-Bold' if name_font.get('bold') else 'Helvetica',
-            fontSize=name_font.get('size', 16),
-            textColor=heading_color,
-            alignment=1, # Center
-            spaceAfter=6 * line_spacing
-        )
-        story.append(Paragraph(resume_data.get('name', 'Your Name'), name_style))
+        # --- LEFT COLUMN (SIDEBAR) ---
+        sidebar_content = []
+        sidebar_content.append(Spacer(1, 0.5*inch))
         
-        # Header Contact (Only for single column or if not in side column)
-        # Note: In two-column, contact often moves to side. checking layout.
+        # Contact
+        sidebar_content.append(Paragraph("CONTACT", style_sidebar_header))
+        contact = resume_data.get('contact', {})
+        if contact.get('email'): sidebar_content.append(Paragraph(f"📧 {contact['email']}", style_sidebar_text))
+        if contact.get('phone'): sidebar_content.append(Paragraph(f"📱 {contact['phone']}", style_sidebar_text))
+        if contact.get('location'): sidebar_content.append(Paragraph(f"📍 {contact['location']}", style_sidebar_text))
+        sidebar_content.append(Spacer(1, 0.2*inch))
         
-        if layout_type == 'two_column' and 'contact' in meta.get('left_column', []):
-             # Contact will be in left column, don't show in header
-             pass
-        else:
-             # Standard Header Contact
-            contact = resume_data.get('contact', {})
-            contact_parts = []
-            if contact.get('email'): contact_parts.append(contact['email'])
-            if contact.get('phone'): contact_parts.append(contact['phone'])
-            if contact.get('location'): contact_parts.append(contact['location'])
-            
-            contact_text = ' | '.join([p for p in contact_parts if p])
-            contact_style = ParagraphStyle(
-                'Contact',
-                parent=styles['Normal'],
-                fontName='Helvetica',
-                fontSize=body_font.get('size', 10),
-                alignment=1,
-                spaceAfter=12 * line_spacing
-            )
-            story.append(Paragraph(contact_text, contact_style))
-            
-            links = []
-            if contact.get('linkedin'): links.append(f'<a href="{contact["linkedin"]}">LinkedIn</a>')
-            if contact.get('github'): links.append(f'<a href="{contact["github"]}">GitHub</a>')
-            if contact.get('portfolio'): links.append(f'<a href="{contact["portfolio"]}">Portfolio</a>')
-            
-        if links:
-            links_text = ' | '.join(links)
-            story.append(Paragraph(links_text, contact_style))
-            story.append(Spacer(1, 0.1*inch * line_spacing))
-
-        # --- BODY LAYOUT ---
-        if layout_type == 'two_column':
-            # Get column definitions
-            left_sections = meta.get('left_column', ['skills', 'education'])
-            right_sections = meta.get('right_column', ['summary', 'experience'])
-            left_width = meta.get('left_width', 0.35)
-            right_width = meta.get('right_width', 0.65)
-            
-            # Generate styled content for each column
-            left_story = create_section_content(left_sections)
-            right_story = create_section_content(right_sections)
-            
-            # Calculate table width
-            avail_width = doc.width
-            col1_width = avail_width * left_width - 0.1*inch # gap
-            col2_width = avail_width * right_width
-            
-            # Create Table
-            data = [[left_story, right_story]]
-            tbl = Table(data, colWidths=[col1_width, col2_width])
-            
-            tbl.setStyle(TableStyle([
-                ('VALIGN', (0,0), (-1,-1), 'TOP'),
-                ('LEFTPADDING', (0,0), (0,0), 0),
-                ('RIGHTPADDING', (0,0), (0,0), 10),
-                ('LEFTPADDING', (1,0), (1,0), 10),
-                ('RIGHTPADDING', (1,0), (1,0), 0),
-            ]))
-            
-            story.append(tbl)
-            
-        else:
-            # SINGLE COLUMN (Standard)
-            section_order = meta.get('section_order', ['summary', 'experience', 'skills', 'education'])
-            content = create_section_content(section_order)
-            story.extend(content)
-
-        # Build PDF
-        doc.build(story)
-        app_logger.info(f"PDF exported to {filepath}")
+        # Skills (Move to sidebar in Modern)
+        if resume_data.get('skills'):
+            sidebar_content.append(Paragraph("SKILLS", style_sidebar_header))
+            skills = resume_data['skills']
+            if isinstance(skills, dict):
+                for cat, val in skills.items():
+                    sidebar_content.append(Paragraph(f"<b>{cat}</b>", style_sidebar_text))
+                    sidebar_content.append(Paragraph(val, style_sidebar_text))
+                    sidebar_content.append(Spacer(1, 0.1*inch))
+            else:
+                for s in skills[:15]: # Limit
+                    sidebar_content.append(Paragraph(f"• {s}", style_sidebar_text))
         
-        return filepath
+        def draw_line(width, color=lightgrey):
+            d = Drawing(width, 1)
+            d.add(Line(0, 0, width, 0, strokeColor=color))
+            return d
+
+        # --- RIGHT COLUMN (MAIN) ---
+        main_content = []
+        main_content.append(Spacer(1, 0.5*inch))
+        
+        # Name
+        main_content.append(Paragraph(resume_data.get('name', 'Name'), style_main_header))
+        # Summary
+        if resume_data.get('summary'):
+            main_content.append(Paragraph("PROFILE", style_section))
+            main_content.append(Paragraph(resume_data['summary'], style_bullet))
+        
+        # Experience
+        if resume_data.get('experience'):
+            main_content.append(Paragraph("EXPERIENCE", style_section))
+            main_content.append(draw_line(400))
+            for exp in resume_data['experience']:
+                main_content.append(Spacer(1, 8))
+                main_content.append(Paragraph(f"{exp.get('title')} at {exp.get('company')}", style_job))
+                main_content.append(Paragraph(f"<font color='#7f8c8d'>{exp.get('duration')}</font>", style_bullet))
+                for d in exp.get('details', []):
+                    main_content.append(Paragraph(f"• {d}", style_bullet))
+        
+        # Education
+        if resume_data.get('education'):
+            main_content.append(Paragraph("EDUCATION", style_section))
+            for edu in resume_data['education']:
+                main_content.append(Paragraph(f"<b>{edu.get('title')}</b>", style_bullet))
+
+        # Main Layout Table
+        # Using a fixed high height to simulate sidebar filling page (hacky but works for 1 page)
+        # Better: calculate height or use Frames. For now, assuming ~10 inch content.
+        
+        tbl = Table([[sidebar_content, main_content]], colWidths=[2.3*inch, 5.7*inch])
+        tbl.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (0,0), bg_color),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('LEFTPADDING', (0,0), (0,0), 15),
+            ('RIGHTPADDING', (0,0), (0,0), 10),
+            ('LEFTPADDING', (1,0), (1,0), 20),
+            ('RIGHTPADDING', (1,0), (1,0), 20),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+        ]))
+        
+        doc.build([tbl])
     
     # ============================================================
     # Template System (Phase 2 - Resume Export Feature)
@@ -920,11 +1027,11 @@ Return ONLY valid JSON, no markdown, no extra text."""
     # AI Compression (1-page constraint)
     # ============================================================
     
-    def compress_to_one_page(self, resume_data: Dict, job_description: str, 
+    def tailor_and_compress(self, resume_data: Dict, job_description: str, 
                             template: Optional[Dict] = None, 
                             mode: str = "balanced") -> Optional[Dict]:
         """
-        Compress resume to fit 1 page using AI
+        Tailor resume for specific job AND compress to fit 1 page using AI
         
         Args:
             resume_data: Full resume
@@ -933,75 +1040,61 @@ Return ONLY valid JSON, no markdown, no extra text."""
             mode: 'aggressive', 'balanced', or 'conservative'
         
         Returns:
-            dict: Compressed resume
+            dict: Tailored and compressed resume
         """
         try:
-            # Calculate word limit based on template
+            # Compression/Optimization settings
+            # We want a STRICT ONE-PAGE resume.
+            # 500 words is a safer upper limit for 1 page with decent spacing.
+            
+            target_words = 500
             if template and template.get('layout') == 'two_column':
-                base_limit = 700
-            else:
-                base_limit = 600
+                target_words = 600
             
-            # Adjust for line spacing
-            if template:
-                line_spacing = template.get('line_spacing', 1.0)
-                if line_spacing < 1.0:
-                    base_limit += 50  # Tighter spacing allows more words
+            app_logger.info(f"Tailoring resume. Target: ~{target_words} words ({mode} mode)")
             
-            # Compression ratios
-            ratios = {
-                "aggressive": 0.80,  # 80% compression
-                "balanced": 0.70,
-                "conservative": 0.60
-            }
-            
-            target_words = int(base_limit * (1 - ratios.get(mode, 0.70)))
-            
-            app_logger.info(f"Compressing resume to ~{target_words} words ({mode} mode)")
-            
-            # AI compression prompt - PRESERVE important info
-            prompt = f"""You are compressing a resume to ~{target_words} words while PRESERVING ALL ESSENTIAL INFORMATION.
+            # AI Prompt - STRICT 1-PAGE & KEYWORDS
+            prompt = f"""You are an expert resume writer.
 
-CURRENT: {self._count_words(resume_data)} words → TARGET: {target_words} words
-MODE: {mode}
+TARGET JOB DESCRIPTION:
+{job_description[:2500]}
 
-Job Description:
-{job_description[:500]}...
-
-Full Resume:
+CURRENT RESUME (JSON):
 {json.dumps(resume_data, indent=2)}
 
-ABSOLUTE REQUIREMENTS - DO NOT REMOVE:
-1. **KEEP ALL contact info** (email, phone, LinkedIn URL, GitHub URL, Portfolio URL)
-2. **KEEP EVERY job entry** (all titles, companies, dates)
-3. **KEEP ALL education entries** 
-4. **KEEP ALL SPECIFIC tool names** (e.g., "H5P, Articulate, Canvas" not just "EdTech Tools")
-5. **KEEP ALL SPECIFIC skill names** (e.g., "Python, JavaScript" not just "Programming")
-6. **PRESERVE JSON structure** exactly
+TASK: Use the JD keywords to rewrite the resume into a STRICT 1-PAGE version.
 
-HOW TO COMPRESS (only shorten bullet points):
-✅ DO: Remove filler words ("Responsible for", "Assisted in", "Helped with")
-✅ DO: Combine similar points ("Managed X and Y" → "Managed X, Y")
-✅ DO: Use abbreviations where clear (Project Manager → PM)
-❌ DON'T: Remove job entries
-❌ DON'T: Generalize specific tool names
-❌ DON'T: Remove contact links
-❌ DON'T: Skip education or certifications
+RULES:
+1. **KEYWORD INTEGRATION**: Rewrite bullet points to naturally include hard skills from the JD.
+2. **STRICT LENGTH**: 
+   - **MAX 4 BULLETS** per job role (choose the most relevant ones).
+   - **MAX 2 LINES** per bullet point (concise but impactful).
+   - Total length approx {target_words} words.
+3. **STRUCTURE**: Keep exact JSON keys. Do not remove jobs unless >10 years old.
+4. **NO FILLER**: Remove "Responsibilities included", "Helped with". Start with Action Verbs.
 
-EXAMPLE:
-Before: "Responsible for developing comprehensive training documentation and multimedia content using H5P, Articulate Suite, and Adobe Captivate that significantly improved internal processes"
-After: "Developed training docs and multimedia (H5P, Articulate, Adobe Captivate), improving processes by 20%"
+CRITICAL NEGATIVE CONSTRAINTS (DO NOT IGNORE):
+- **NEVER** change Dates, Job Titles, or Company Names. Copy them EXACTLY.
+- **NEVER** change Locations. USE THE EXACT LOCATION FROM THE SOURCE JSON.
+- **DO NOT** apply the candidate's current residence (e.g., London, ON) to past jobs. 
+- If a job's location is "Toronto", KEEP IT "Toronto".
+- **DO NOT** hallucinate new facts or numbers. Only rephrase existing bullets.
 
-Return ONLY compressed JSON with SAME structure."""
+
+Example Rewrite:
+Before: "Responsible for managing the project team and using Python to automate data entry which saved time."
+After: "Spearheaded automation initiatives using Python, reducing manual data entry by 40% and optimizing team workflows."
+
+Return JSON:"""
 
             response = ai_agent.client.chat.completions.create(
                 model=ai_agent.model,
                 messages=[
-                    {"role": "system", "content": "You are a resume compression expert. KEEP ALL job entries, contact links, and specific tool names. Only shorten descriptions. Return ONLY valid JSON."},
+                    {"role": "system", "content": "You are a specialized resume writer. Your goal is to create a DENSE, KEYWORD-RICH resume that passes ATS and fills the page. Return ONLY valid JSON."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.1,  # Very low for consistency
-                max_tokens=3500  # Increased to handle full resume
+                temperature=0.7, 
+                max_tokens=3500
             )
             
             result = response.choices[0].message.content
@@ -1018,12 +1111,12 @@ Return ONLY compressed JSON with SAME structure."""
             word_count = self._count_words(compressed)
             compressed['_word_count'] = word_count
             
-            app_logger.info(f"Compressed resume to {word_count} words")
+            app_logger.info(f"Tailored resume generated: {word_count} words")
             
             return compressed
         
         except Exception as e:
-            app_logger.error(f"Compression failed: {e}")
+            app_logger.error(f"Tailoring and compression failed: {e}")
             return None
     
     def _count_words(self, resume_data: Dict) -> int:

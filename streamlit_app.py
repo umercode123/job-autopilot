@@ -22,6 +22,7 @@ from streamlit_extras.badges import badge
 from streamlit_card import card
 
 # Page configuration
+import base64
 st.set_page_config(
     page_title="Job Autopilot 🚀",
     page_icon="🚀",
@@ -584,12 +585,13 @@ elif page == "📄 Resume Export":
     if 'selected_template' not in st.session_state: st.session_state.selected_template = None
     if 'compressed_resume' not in st.session_state: st.session_state.compressed_resume = None
     
-    # Progress Steps
-    steps = ["Upload", "Template", "Customize", "AI Compress", "ATS Score", "Export"]
+    # Progress Steps (Reordered)
+    steps = ["Upload", "Template", "AI Optimize", "Customize", "ATS Score", "Export"]
     current_step = 0
     if st.session_state.resume_data: current_step = 1
     if st.session_state.selected_template: current_step = 2
-    if st.session_state.compressed_resume: current_step = 4 # Skip customize logic check for simplicity
+    # If optimization has happened (we'll check a flag or just assume based on flow)
+    # Ideally tracking state better, but for now simple increment logic
     
     # Modern Progress Bar
     st.markdown(f"""
@@ -663,140 +665,244 @@ elif page == "📄 Resume Export":
             st.success(f"Selected: **{st.session_state.selected_template}**")
 
     
-    # ===== STEP 3: Customize Resume =====
-    if st.session_state.selected_template:
-        st.write("")
-        with st.container(border=True):
-            st.markdown("### ✂️ Step 3: Customize Content")
+    # ===== STEP 3: AI Optimization (Moved up) =====
+
+            # ==========================
+            # Step 3: AI Optimization & Contact Info
+            # ==========================
+            st.header("Step 3: AI Optimization & Setup")
             
-            template_config = resume_generator.load_template(st.session_state.selected_template)
+            col_input, col_ai = st.columns([1, 1])
             
-            if template_config and st.session_state.resume_data:
-                
-                tabs = st.tabs(["📝 Content", "📐 Layout & Order"])
-                
-                with tabs[0]:
-                    col1, col2 = st.columns([2, 1])
-                    with col1:
-                        st.markdown("**Professional Summary**")
-                        new_summary = st.text_area(
-                            "Edit Summary", 
-                            value=st.session_state.resume_data.get('summary', ''),
-                            height=150,
-                            label_visibility="collapsed"
-                        )
-                        st.session_state.resume_data['summary'] = new_summary
+            with col_input:
+                st.subheader("1. Confirm Contact Info")
+                # Pre-AI Contact Editing
+                if 'resume_data' in st.session_state:
+                    contact = st.session_state.resume_data.get('contact', {})
                     
-                    with col2:
-                        st.markdown("**Contact Info**")
-                        contact = st.session_state.resume_data.get('contact', {})
-                        contact['email'] = st.text_input("Email", contact.get('email', ''))
-                        contact['phone'] = st.text_input("Phone", contact.get('phone', ''))
-                        contact['location'] = st.text_input("Location", contact.get('location', ''))
-                        st.session_state.resume_data['contact'] = contact
+                    # Direct inputs - Streamlit updates on blur (click away) or Enter
+                    new_email = st.text_input("Email", value=contact.get('email', ''))
+                    new_phone = st.text_input("Phone", value=contact.get('phone', ''))
+                    new_linkedin = st.text_input("LinkedIn", value=contact.get('linkedin', ''))
+                    new_portfolio = st.text_input("Portfolio", value=contact.get('portfolio', ''))
+                    new_other = st.text_input("GitHub / Other Website", value=contact.get('github', '')) # Using 'github' key for other/github
+                    new_location = st.text_input("Location", value=contact.get('location', ''))
+                    
+                    # Update session promptly
+                    st.session_state.resume_data['contact'] = {
+                        "email": new_email,
+                        "phone": new_phone,
+                        "linkedin": new_linkedin,
+                        "portfolio": new_portfolio,
+                        "github": new_other, # Store in github key or add 'other' if generator supports it
+                        "location": new_location
+                    }
+            
+            with col_ai:
+                st.subheader("2. Target Job")
+                # Job Selection - FIX: Use st.session_state.jobs
+                jobs_source = st.session_state.jobs if st.session_state.jobs else []
+                job_options = {f"{job['title']} at {job['company']}": job for job in jobs_source}
+                selected_job_name = st.selectbox("Select Target Job", list(job_options.keys()))
                 
-                with tabs[1]:
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown("**Section Ordering**")
-                        st.caption("Drag and drop items to reorder sections.")
-                        
-                        # Initialize user order
-                        default_order = template_config.get('section_order', ['summary', 'experience', 'skills', 'education'])
-                        if 'custom_section_order' not in st.session_state:
-                             st.session_state.custom_section_order = default_order
-                        
-                        # Sortable Component
+                target_jd = ""
+                if selected_job_name:
+                    target_jd = job_options[selected_job_name].get('description', '')
+                    # Clean HTML just in case
+                    from modules.job_scraper import JobScraper
+                    target_jd = JobScraper().clean_html_tags(target_jd)
+                    
+                with st.expander("View Job Description"):
+                    st.text_area("JD Content", target_jd, height=150)
+                    
+                if st.button("✨ Auto-Tailor Resume", type="primary"):
+                    with st.spinner("AI is rewriting your resume..."):
+                        try:
+                            # Run AI tailoring
+                            # FIX 1: Use st.session_state.selected_template
+                            layout_type = "two_column" if "two_column" in st.session_state.get('selected_template', '') else "single_column"
+                            
+                            optimized_resume = resume_generator.tailor_and_compress(
+                                st.session_state.resume_data,
+                                target_jd,
+                                template={"layout": layout_type},
+                                mode="balanced"
+                            )
+                            
+                            if optimized_resume:
+                                st.session_state.resume_data = optimized_resume
+                                st.session_state.ai_tailored = True
+                                st.success("Resume optimized!")
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"Optimization failed: {e}")
+
+            # ==========================
+            # Step 4: Preview & Customize Loop
+            # ==========================
+            if st.session_state.get('ai_tailored', False):
+                st.header("Step 4: Review & Customize (Loop)")
+                
+                col_edit, col_preview = st.columns([1, 1])
+                
+                with col_edit:
+                    st.subheader("✏️ Edit Content")
+                    
+                    # 1. Reorder Section (Moved to Top)
+                    with st.expander("📐 Reorder Resume Sections", expanded=True):
+                        st.caption("Drag and drop to rearrange section order")
                         try:
                             from streamlit_sortables import sort_items
-                            sorted_sections = sort_items(
-                                st.session_state.custom_section_order,
-                                direction='vertical'
-                            )
-                            # Detect change
-                            if sorted_sections != st.session_state.custom_section_order:
+                            
+                            # Get current order from meta or default
+                            current_order = st.session_state.resume_data.get('_meta', {}).get('section_order', 
+                                ['summary', 'experience', 'education', 'skills', 'projects'])
+                            
+                            # Show sortable list
+                            sorted_sections = sort_items(current_order, direction='horizontal')
+                            
+                            if sorted_sections != current_order:
+                                if '_meta' not in st.session_state.resume_data:
+                                    st.session_state.resume_data['_meta'] = {}
+                                st.session_state.resume_data['_meta']['section_order'] = sorted_sections
                                 st.session_state.custom_section_order = sorted_sections
                                 st.rerun()
-                        except ImportError:
-                            st.error("Please install streamlit-sortables to use this feature.")
+                                
+                                st.caption("Current Order: " + " → ".join([s.title() for s in sorted_sections]))
+
                         except Exception as e:
-                            st.error(f"Error loading sortables: {e}")
-                                    
-                    with col2:
-                        st.markdown("**Formatting**")
-                        st.slider("Line Spacing", 0.8, 1.5, 1.0, 0.1, key="spacing_slider")
+                            st.warning(f"Sortables error: {e}")
+
+                    with st.expander("Professional Summary", expanded=False):
+                        new_summary = st.text_area("Summary", value=st.session_state.resume_data.get('summary', ''), height=150)
+                        st.session_state.resume_data['summary'] = new_summary
+
+                    
+                    with st.expander("Experience (Bullets)"):
+                        experiences = st.session_state.resume_data.get('experience', [])
+                        for i, exp in enumerate(experiences):
+                            col_c, col_t = st.columns(2)
+                            with col_c:
+                                new_comp = st.text_input(f"Company {i+1}", value=exp.get('company', ''), key=f"comp_{i}")
+                            with col_t:
+                                new_title = st.text_input(f"Title {i+1}", value=exp.get('title', ''), key=f"title_{i}")
+                            
+                            experiences[i]['company'] = new_comp
+                            experiences[i]['title'] = new_title
+                            
+                            # Location Input
+                            new_loc = st.text_input(f"Location {i+1}", value=exp.get('location', ''), key=f"loc_{i}")
+                            experiences[i]['location'] = new_loc
+
+                            
+                            new_bullets = []
+                            if 'details' in exp:
+                                for j, bullet in enumerate(exp['details']):
+                                    val = st.text_area(f"Bullet {j+1}", value=bullet, key=f"bull_{i}_{j}", height=68)
+                                    new_bullets.append(val)
+                            experiences[i]['details'] = new_bullets
+                        st.session_state.resume_data['experience'] = experiences
+
+                    with st.expander("Skills (Bullet Points)"):
+                        current_skills = st.session_state.resume_data.get('skills', [])
                         
-                        # Word Count
-                        wc = resume_generator._count_words(st.session_state.resume_data)
-                        cap = 700 if template_config.get('layout') == 'two_column' else 600
-                        st.metric("Word Count", f"{wc} / {cap}", delta=cap-wc)
-                        if wc > cap:
-                            st.warning("⚠️ Resume is too long for 1 page!")
-    
-    # ===== STEP 4: AI Compression =====
-    if st.session_state.selected_template and st.session_state.resume_data:
-        st.write("")
-        with st.container(border=True):
-            st.markdown("### 🤖 Step 4: AI Compression")
-            
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                st.info("Select a job from your 'Job Search' results to tailor this resume specifically for that role.")
-                
-                # Job selector
-                job_map = {f"{j.get('title')} @ {j.get('company')}": j for j in st.session_state.jobs} if st.session_state.jobs else {}
-                selected_job_name = st.selectbox("Target Job", ["Generic (No specific job)"] + list(job_map.keys()))
-                selected_job = job_map.get(selected_job_name)
-                
-            with col2:
-                st.write("**Compression Strength**")
-                mode = st.select_slider(
-                    "Select Intensity",
-                    options=["None", "Conservative", "Balanced", "Aggressive"],
-                    value="Balanced"
-                )
-            
-            if st.button("✨ Generate Optimized Resume", type="primary", use_container_width=True):
-                with st.spinner("🤖 AI is rewriting your resume..."):
-                    try:
-                        jd = selected_job.get('description', '') if selected_job else "General resume"
-                        mode_key = mode.lower() if mode != "None" else "none"
-                        
-                        if mode_key == "none":
-                            st.session_state.compressed_resume = st.session_state.resume_data.copy()
+                        # FORMATTING: Convert Dict or List to clean Multiline String
+                        skills_text = ""
+                        if isinstance(current_skills, dict):
+                            # Convert Dict {'Cat': 'Skills'} -> "Cat: Skills"
+                            lines = []
+                            for cat, vals in current_skills.items():
+                                lines.append(f"{cat}: {vals}")
+                            skills_text = "\n".join(lines)
+                        elif isinstance(current_skills, list):
+                            # Already list, just join
+                            skills_text = "\n".join([str(s) for s in current_skills])
                         else:
-                            # Verify template config is loaded
-                            t_conf = resume_generator.load_template(st.session_state.selected_template)
-                            st.session_state.compressed_resume = resume_generator.compress_to_one_page(
-                                st.session_state.resume_data, jd, t_conf, mode_key
-                            )
+                            skills_text = str(current_skills)
+                            
+                        st.caption("Edit skills line by line. Use **Category: Skills** format for bolding.")
+                        new_skills_str = st.text_area("Skills List", value=skills_text, height=200, key="skills_input")
                         
-                        st.success("Optimization Complete!")
+                        # SAVING: Parse back to List of Strings (PDF generator handles the rest)
+                        if new_skills_str:
+                             # Just split by newline, clean whitespace
+                             st.session_state.resume_data['skills'] = [s.strip() for s in new_skills_str.split('\n') if s.strip()]
+
+
+
+
+                    # Tab 2: Sort Sections (Restored)
+
+
+                    
+                    if st.button("🔄 Refresh Preview"):
+                        st.rerun()
+                        
+                with col_preview:
+                    st.subheader("📄 Live Preview")
+                    # Generate temporary PDF for preview
+                    try:
+                        # Update meta template
+                        st.session_state.resume_data['_meta'] = {'template': st.session_state.selected_template}
+                        
+                        preview_path = resume_generator.export_pdf(st.session_state.resume_data, "preview_temp.pdf")
+                        
+                        if preview_path and os.path.exists(preview_path):
+                            with open(preview_path, "rb") as f:
+                                base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+                            
+                            # Embed PDF
+                            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
+                            st.markdown(pdf_display, unsafe_allow_html=True)
+                        else:
+                            st.warning("Preview generation failed.")
                     except Exception as e:
-                        st.error(f"Error: {e}")
-    
+                        st.error(f"Preview error: {e}")
+
+    # ==========================
+    # Step 5: ATS Analysis (Moved down)
+    # ==========================
+
+
+
     # ===== STEP 5: ATS Score =====
-    if st.session_state.compressed_resume:
+    if st.session_state.selected_template and st.session_state.resume_data:
         st.write("")
         with st.container(border=True):
             st.markdown("### 📊 Step 5: ATS Analysis")
             
-            # Calculate score automatically if job selected
-            if selected_job:
-                resume_text = json.dumps(st.session_state.compressed_resume)
-                jd_text = selected_job.get('description', '')
-                res = ats_scorer.score_resume(resume_text, jd_text)
-                
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Match Score", f"{res['score']}%", delta="High Match" if res['score']>70 else "Low Match")
-                c2.metric("Missing Keywords", len(res['missing_keywords']), delta_color="inverse")
-                c3.metric("Keyword Density", "Optimal")
-                style_metric_cards()
-                
-                if res['missing_keywords']:
-                    st.warning(f"**Missing Keywords**: {', '.join(res['missing_keywords'][:5])}")
+            # Use selected job from Step 3 scope if available, else try to find it
+            ats_target_job = None
+            if selected_job_name and selected_job_name != "Generic (No specific job)":
+                 # Reconstruct job lookup if necessary
+                 jobs_source = st.session_state.jobs if st.session_state.jobs else []
+                 job_map = {f"{job['title']} at {job['company']}": job for job in jobs_source}
+                 ats_target_job = job_map.get(selected_job_name)
+
+            if ats_target_job:
+                 # Recalulate based on CURRENT resume content
+                 resume_text = json.dumps(st.session_state.resume_data)
+                 jd_text = ats_target_job.get('description', '')
+                 
+                 # Clean HTML from JD for ATS scoring
+                 from modules.job_scraper import JobScraper
+                 jd_text = JobScraper().clean_html_tags(jd_text)
+                 
+                 if st.button("Check ATS Score  📊", type="primary"):
+                     res = ats_scorer.score_resume(resume_text, jd_text)
+                     
+                     c1, c2, c3 = st.columns(3)
+                     c1.metric("Match Score", f"{res['score']}%", delta="High" if res['score']>70 else "Low")
+                     c2.metric("Missing Keywords", len(res['missing_keywords']), delta_color="inverse")
+                     c3.metric("Keyword Density", "Analyzed")
+                     style_metric_cards()
+                     
+                     if res['missing_keywords']:
+                        st.warning(f"**Missing Keywords**: {', '.join(res['missing_keywords'][:5])}")
+                        st.caption("Tip: Add these keywords to your skills or summary in Step 4.")
             else:
-                st.info("Select a target job above to see ATS Score.")
+                 st.info("Select a job in Step 3 to enable ATS scoring.")
+
 
     # ===== STEP 6: Export =====
     if st.session_state.compressed_resume or st.session_state.resume_data:
@@ -805,7 +911,9 @@ elif page == "📄 Resume Export":
             st.markdown("### 💾 Step 6: Export & Save")
             
             # Determine which resume to export
-            export_data = st.session_state.compressed_resume if st.session_state.compressed_resume else st.session_state.resume_data
+            # FIX: STRICTLY use the data from Step 4 (Edit Mode) to ensure WYSIWYG
+            export_data = st.session_state.resume_data
+
             
             # Load Template
             t_conf = None

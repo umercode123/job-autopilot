@@ -207,7 +207,7 @@ class JobScraper:
             processed = {
                 "title": raw_job.get("title", "Unknown Position"),
                 "company": company,
-                "description": raw_job.get("descriptionText") or raw_job.get("description") or "",
+                "description": self.clean_html_tags(raw_job.get("descriptionText") or raw_job.get("description") or ""),
                 "location": location,
                 "salary": salary,
                 "is_remote": is_remote,
@@ -241,6 +241,18 @@ class JobScraper:
             scraper_logger.error(f"Failed to process job data: {e}", exc_info=True)
             scraper_logger.debug(f"Problematic raw_job keys: {list(raw_job.keys()) if raw_job else 'None'}")
             return {}
+
+    def clean_html_tags(self, text: str) -> str:
+        """Remove HTML tags from text"""
+        if not text:
+            return ""
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(text, "html.parser")
+            return soup.get_text(separator=" ", strip=True)
+        except Exception as e:
+            scraper_logger.warning(f"HTML cleaning failed: {e}")
+            return text
     
     def _categorize_job(self, title: str, description: str) -> str:
         """

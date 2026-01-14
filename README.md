@@ -59,6 +59,23 @@
 
 ---
 
+## 🔄 Workflow
+
+```mermaid
+graph TD
+    A[Start: Upload Resume] -->|PDF/DOCX/MD| B(Select Template)
+    B --> C{AI Optimization?}
+    C -->|Yes| D[AI Tailoring w/ Job Description]
+    C -->|No| E[Manual Edit]
+    D --> E
+    E -->|Edit Content/Skills| F[Live PDF Preview]
+    F -->|Drag & Drop Sections| F
+    F --> G[Check ATS Score]
+    G --> H[Export Final PDF/DOCX]
+```
+
+---
+
 ## 🛠️ Tech Stack
 
 | Category | Technology |

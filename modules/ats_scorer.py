@@ -110,19 +110,29 @@ class ATSScorer:
         Returns:
             List of keywords (lowercase)
         """
+        if not hasattr(self, 'RESUME_STOPWORDS'):
+            self.RESUME_STOPWORDS = {
+                "experience", "work", "job", "role", "team", "year", "years", "time", "date",
+                "project", "company", "clients", "business", "skills", "tools", "summary",
+                "education", "university", "college", "school", "degree", "certification",
+                "requirements", "qualifications", "responsibilities", "duties", "description",
+                "opportunity", "candidate", "position", "applicant", "application"
+            }
+
         doc = self.nlp(text.lower())
         
         keywords = []
         for token in doc:
             # Extract nouns, proper nouns, and adjectives
             if token.pos_ in ["NOUN", "PROPN", "ADJ"] and not token.is_stop:
-                if len(token.text) > 2:  # Ignore very short words
+                if len(token.text) > 2 and token.text.lower() not in self.RESUME_STOPWORDS:
                     keywords.append(token.text)
         
         # Also extract named entities (companies, technologies, etc.)
         for ent in doc.ents:
-            if ent.label_ in ["ORG", "PRODUCT", "SKILL"]:
-                keywords.append(ent.text.lower())
+            if ent.label_ in ["ORG", "PRODUCT", "SKILL", "PERSON", "GPE"]:
+                if ent.text.lower() not in self.RESUME_STOPWORDS:
+                    keywords.append(ent.text.lower())
         
         return keywords
     
