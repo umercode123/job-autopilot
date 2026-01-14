@@ -23,14 +23,16 @@
 ### 📄 **Resume Export & Optimization** ✨ IMPROVED
 - 📤 **Multi-Format Upload**: Support PDF, DOCX, and Markdown master resumes
 - 🎨 **Professional Templates**: 4 ATS-friendly templates (single/two-column, classic/modern)
+- 🧠 **GPT-4o Powered**: Resume optimization uses GPT-4o for higher accuracy (other features use cost-effective GPT-4o-mini)
 - 🔄 **AI Compression**: Smart compression to fit strict 1-page (350 words target)
 - 📊 **ATS Scoring**: Real-time ATS compatibility score with keyword matching
 - 🎯 **Job-Tailored Resumes**: AI optimizes resume for each job description
-- 🔒 **Anti-Hallucination**: Post-processing validation preserves locations, dates, and projects
+- 🔒 **Anti-Hallucination**: Iron-clad data protection - dates, locations, and company names are locked and cannot be modified by AI
 - 📦 **Projects Section**: Always preserved with markdown syntax cleanup
 - 🛠️ **Skills Filtering**: AI filters skills to match JD keywords
 - 📥 **Export Options**: Download as PDF or DOCX with proper formatting
 - 🔧 **Drag-and-Drop Sections**: Reorder resume sections interactively
+- ✏️ **CRUD Experience/Education**: Add, edit, delete job entries directly in UI
 - 🖼️ **Live Preview**: Real-time preview with timestamp
 
 ### 📧 **Email Center** ✨ NEW

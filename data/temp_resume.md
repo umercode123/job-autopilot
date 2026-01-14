@@ -21,7 +21,7 @@ Project Sepcifications: [Yuting Sun_projects](https://drive.google.com/file/d/1V
 - Streamlined HR filing system, reducing discrepancies by 15%. 
 - Supported development of training documentation and process improvement initiatives.
 
-**SavvyPro Edu. Inc — Product & Learning Technology Coordinator  
+**SavvyPro Edu. Inc — Product & Learning Technology Coordinator**  
 *Toronto, ON | Jul 2023 – Jun 2024* 
 - Supported end-to-end coordination of professional learning programs, including scheduling sessions, managing enrollment lists, and collecting evaluations.
 - Collaborated with instructors to prepare materials, troubleshoot virtual classroom issues, and ensure smooth course delivery.

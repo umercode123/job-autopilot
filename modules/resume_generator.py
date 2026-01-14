@@ -196,15 +196,34 @@ class ResumeGenerator:
                     if current_job:
                         resume['experience'].append(current_job)
                     
-                    # Parse: **Company — Job Title**
+                    # Parse: **Company — Job Title** (may have missing closing **)
                     line_clean = line.strip('*').strip()
                     if '—' in line_clean:
                         parts = line_clean.split('—', 1)
                         company = parts[0].strip()
-                        title = parts[1].strip()
+                        title = parts[1].strip().rstrip('*')  # Remove trailing * if any
                     else:
                         company = line_clean
                         title = ""
+                    
+                    current_job = {
+                        "title": title,
+                        "company": company,
+                        "location": "",
+                        "duration": "",
+                        "details": []
+                    }
+                
+                # Also check for job lines without ** (just bold text)
+                elif '—' in line and current_section == 'experience' and not line.startswith('-'):
+                    # Save previous job
+                    if current_job:
+                        resume['experience'].append(current_job)
+                    
+                    line_clean = line.strip('*').strip()
+                    parts = line_clean.split('—', 1)
+                    company = parts[0].strip()
+                    title = parts[1].strip().rstrip('*') if len(parts) > 1 else ""
                     
                     current_job = {
                         "title": title,
@@ -412,12 +431,16 @@ class ResumeGenerator:
             exp_heading.runs[0].font.size = Pt(11)
             
             for exp in resume_data['experience']:
-                # Job title + company
+                # Job title + company + location + duration
                 job_line = doc.add_paragraph()
                 job_line.add_run(exp.get('title', '')).bold = True
                 
                 if exp.get('company'):
                     job_line.add_run(f" | {exp['company']}")
+                
+                # Add location field - FIXED
+                if exp.get('location'):
+                    job_line.add_run(f" | {exp['location']}")
                 
                 if exp.get('duration'):
                     job_line.add_run(f" | {exp['duration']}")
@@ -612,15 +635,30 @@ class ResumeGenerator:
                      skills_data = [f"{k}: {v}" for k,v in skills_data.items()]
                      
                 for skill_line in skills_data:
-                    # Format: "Category: Skill, Skill" -> "<b>Category</b>: Skill, Skill"
-                    text = str(skill_line)
+                    # Format: "Category: Skill, Skill" -> "• <b>Category</b>: Skill, Skill"
+                    text = str(skill_line).strip()
+                    
+                    # Clean Python list syntax like ['skill1', 'skill2']
+                    import re
+                    text = re.sub(r"\['([^']+)'\s*,\s*'([^']+)'\]", r"\1, \2", text)
+                    text = re.sub(r"\['([^']+)'\]", r"\1", text)
+                    text = text.replace("[", "").replace("]", "").replace("'", "")
+                    
+                    # Check if already has bullet point - don't add another
+                    has_bullet = text.startswith("•") or text.startswith("-") or text.startswith("*")
+                    
                     if ":" in text:
                         parts = text.split(":", 1)
-                        formatted_text = f"<b>{parts[0]}</b>:{parts[1]}"
+                        category = parts[0].strip().lstrip("•-* ")  # Remove existing bullet if any
+                        skills_part = parts[1].strip()
+                        # Add bullet point • and bold category
+                        formatted_text = f"• <b>{category}</b>: {skills_part}"
                     else:
-                        formatted_text = text
-                        
-                    story.append(Paragraph(formatted_text, style_bullet))
+                        text_clean = text.lstrip("•-* ")  # Remove existing bullet if any
+                        formatted_text = f"• {text_clean}" if text_clean else ""
+                    
+                    if formatted_text:
+                        story.append(Paragraph(formatted_text, style_bullet))
 
                         
             elif section == 'projects' and resume_data.get('projects'):
@@ -977,6 +1015,7 @@ Return EXACTLY this JSON structure:
     {{
       "title": "Job Title 1",
       "company": "Company Name",
+      "location": "City, Province/State",
       "duration": "Start Date - End Date",
       "details": [
         "EVERY bullet point for THIS job",
@@ -987,6 +1026,7 @@ Return EXACTLY this JSON structure:
     {{
       "title": "Job Title 2",
       "company": "Company 2",
+      "location": "City, Province/State",
       "duration": "Start - End",
       "details": [
         "All bullet points for THIS job only"
@@ -1008,11 +1048,22 @@ Return EXACTLY this JSON structure:
   "certifications": ["cert if present"]
 }}
 
-IMPORTANT:
-- If skills have categories (e.g., "EdTech Tools:", "AI & Development:"), use dict format
-- If skills are flat list, return array
-- DO NOT merge bullet points from different jobs
-- KEEP EVERY SINGLE DETAIL
+CRITICAL EXTRACTION RULES:
+1. **LOCATION**: Each job MUST have its own location (e.g., "Toronto, ON", "Wuxi, China")
+   - Look for city/province/country near each job title
+   - Format: "City, Province" or "City, Country"
+   
+2. **DURATION**: Each job MUST have exact dates from the resume
+   - Format: "Mar 2024 – Present" or "Jun 2021 – Jul 2022"
+   - Copy EXACTLY as written, do not modify
+
+3. **ALL JOBS**: Extract EVERY job listed, do not skip any
+
+4. **SKILLS**: If skills have categories (e.g., "EdTech Tools:", "AI & Development:"), use dict format
+   - If skills are a flat list, return array
+
+5. DO NOT merge bullet points from different jobs
+6. KEEP EVERY SINGLE DETAIL
 
 Return ONLY valid JSON, no markdown, no extra text."""
 
@@ -1076,7 +1127,15 @@ Return ONLY valid JSON, no markdown, no extra text."""
             
             app_logger.info(f"Tailoring resume. Target: ~{target_words} words ({mode} mode)")
             
-            # AI Prompt - STRICT 1-PAGE & KEYWORDS + ANTI-HALLUCINATION
+            # Extract job metadata to lock it down
+            original_jobs = resume_data.get('experience', [])
+            job_count = len(original_jobs)
+            job_metadata = []
+            for i, job in enumerate(original_jobs):
+                job_metadata.append(f"  Job {i+1}: company=\"{job.get('company', '')}\", location=\"{job.get('location', '')}\", duration=\"{job.get('duration', '')}\"")
+            job_metadata_str = "\n".join(job_metadata)
+            
+            # AI Prompt - STRICT 1-PAGE & KEYWORDS + IRON-CLAD DATA PROTECTION
             prompt = f"""You are an expert resume writer creating a STRICT 1-PAGE resume.
 
 TARGET JOB DESCRIPTION:
@@ -1085,47 +1144,46 @@ TARGET JOB DESCRIPTION:
 CURRENT RESUME (JSON):
 {json.dumps(resume_data, indent=2)}
 
-TASK: Create a 1-PAGE optimized resume using JD keywords. You MUST include ALL sections.
+═══════════════════════════════════════════════════════════════
+🔒 LOCKED DATA - YOU MUST COPY THESE EXACTLY (DO NOT MODIFY):
+═══════════════════════════════════════════════════════════════
+Total jobs in source: {job_count} (YOU MUST OUTPUT EXACTLY {job_count} JOBS)
 
-CRITICAL 1-PAGE CONSTRAINTS:
-- Total resume: ~{target_words} words maximum (STRICT LIMIT)
-- Experience: MAX 2-3 bullets per job (ONLY the most relevant to JD)
-- Each bullet: MAX 1 line only
-- Projects: MAX 1 short sentence per project
-- Skills: ONLY keep skills mentioned in JD, remove irrelevant skills
-- Education: One line per degree only
+{job_metadata_str}
 
-MANDATORY SECTIONS (DO NOT OMIT ANY):
-1. Summary (2 sentences max)
-2. Experience (all jobs with compressed bullets, keep location field!)
-3. Education
-4. Skills (filtered to match JD keywords)
-5. **PROJECTS** - Include but compress heavily
+⚠️ If your output has fewer than {job_count} jobs, YOUR RESPONSE IS INVALID.
+⚠️ If any location or duration differs from above, YOUR RESPONSE IS INVALID.
+═══════════════════════════════════════════════════════════════
 
-RULES:
-1. **KEYWORD INTEGRATION**: Rewrite bullets using JD keywords.
-2. **STRUCTURE**: Keep exact JSON keys including 'projects' and 'location'.
-3. **NO FILLER**: Remove wordy phrases. Start with Action Verbs.
-4. **SKILLS FILTER**: Only keep skills that appear in the JD or are closely related.
+TASK: Optimize resume for the JD. Only modify:
+- summary (tailor to JD)
+- experience.details (rewrite bullets with JD keywords, 2-3 per job)
+- skills (filter to match JD)
+- projects (compress descriptions)
 
-CRITICAL DATA PRESERVATION (DO NOT CHANGE THESE):
-- Copy 'location' field EXACTLY from each job in source JSON
-- Copy 'duration' field EXACTLY from each job in source JSON  
-- Copy 'company' field EXACTLY from each job in source JSON
-- Copy 'title' field EXACTLY from each job in source JSON
+DO NOT MODIFY:
+- experience.company (copy exactly)
+- experience.location (copy exactly) 
+- experience.duration (copy exactly)
+- experience.title (copy exactly)
+- Number of jobs (must be exactly {job_count})
 
-PROJECTS HANDLING:
-- Keep ALL 3 project titles
-- Each project description: 1 short sentence only (no markdown syntax)
-- Remove ** and * markdown characters
+1-PAGE CONSTRAINTS:
+- ~{target_words} words max
+- 2-3 bullets per job, 1 line each
+- Skills as "Category: skill1, skill2" format
 
-OUTPUT JSON MUST INCLUDE:
-- "name", "contact", "summary", "experience" (with location!), "education", "skills", "projects"
+OUTPUT: Valid JSON with ALL {job_count} jobs, exact locations, exact durations.
 
 Return JSON:"""
 
+            # Use GPT-4o for resume optimization (better instruction following)
+            # Other tasks still use gpt-4o-mini to save costs
+            RESUME_MODEL = "gpt-4o"
+            app_logger.info(f"Using {RESUME_MODEL} for resume optimization (higher quality)")
+            
             response = ai_agent.client.chat.completions.create(
-                model=ai_agent.model,
+                model=RESUME_MODEL,
                 messages=[
                     {"role": "system", "content": "You are a specialized resume writer. Your goal is to create a DENSE, KEYWORD-RICH resume that passes ATS and fills the page. NEVER change locations, dates, or company names. Return ONLY valid JSON."},
                     {"role": "user", "content": prompt}
@@ -1189,6 +1247,34 @@ Return JSON:"""
                     app_logger.warning(f"Could not match job: {comp_exp.get('company')} - fields may be incorrect")
             
             app_logger.info(f"Post-processing: Restored {restored_count}/{len(compressed_exp)} jobs")
+            
+            # Check if AI dropped any jobs - add them back!
+            compressed_companies = {exp.get('company', '').strip().lower() for exp in compressed_exp}
+            for orig_exp in original_exp:
+                orig_company = orig_exp.get('company', '').strip().lower()
+                # Check if this job is missing from AI output
+                found = False
+                for comp_company in compressed_companies:
+                    if orig_company in comp_company or comp_company in orig_company:
+                        found = True
+                        break
+                if not found:
+                    # AI dropped this job - add it back with original bullets
+                    app_logger.warning(f"AI dropped job: {orig_exp.get('company')} - adding back!")
+                    compressed_exp.append(orig_exp)
+            
+            # DEDUPLICATE: Remove duplicate companies (keep first occurrence)
+            seen_companies = set()
+            deduplicated_exp = []
+            for exp in compressed_exp:
+                company_key = exp.get('company', '').strip().lower()
+                if company_key not in seen_companies:
+                    seen_companies.add(company_key)
+                    deduplicated_exp.append(exp)
+                else:
+                    app_logger.info(f"Removed duplicate job: {exp.get('company')}")
+            
+            compressed['experience'] = deduplicated_exp
             
             # 2. ALWAYS restore projects section from original
             if resume_data.get('projects'):

@@ -789,51 +789,173 @@ elif page == "📄 Resume Export":
                             
                         except Exception as e:
                             st.warning(f"Sortables error: {e}")
-
-                    with st.expander("Professional Summary", expanded=False):
+                    
+                    # === Quick Jump Buttons ===
+                    st.caption("🎯 Quick Jump to Edit Section:")
+                    qj_cols = st.columns(5)
+                    with qj_cols[0]:
+                        if st.button("📝 Summary", use_container_width=True):
+                            st.session_state.expand_summary = True
+                    with qj_cols[1]:
+                        if st.button("💼 Experience", use_container_width=True):
+                            st.session_state.expand_experience = True
+                    with qj_cols[2]:
+                        if st.button("🎓 Education", use_container_width=True):
+                            st.session_state.expand_education = True
+                    with qj_cols[3]:
+                        if st.button("⚙️ Skills", use_container_width=True):
+                            st.session_state.expand_skills = True
+                    with qj_cols[4]:
+                        if st.button("🚀 Projects", use_container_width=True):
+                            st.session_state.expand_projects = True
+                    
+                    st.markdown("---")
+                    
+                    # === Edit Sections ===
+                    with st.expander("Professional Summary", expanded=st.session_state.get('expand_summary', False)):
                         new_summary = st.text_area("Summary", value=st.session_state.resume_data.get('summary', ''), height=150)
                         st.session_state.resume_data['summary'] = new_summary
-
+                        st.session_state.expand_summary = False  # Reset after render
                     
-                    with st.expander("Experience (Bullets)"):
+                    with st.expander("Experience (Bullets)", expanded=st.session_state.get('expand_experience', True)):
                         experiences = st.session_state.resume_data.get('experience', [])
+                        
+                        # === Drag & Drop Reorder ===
+                        try:
+                            from streamlit_sortables import sort_items
+                            st.caption("🔀 Drag to reorder jobs:")
+                            job_labels = [f"{exp.get('company', 'Company')} - {exp.get('title', 'Title')}" for exp in experiences]
+                            if job_labels:
+                                sorted_labels = sort_items(job_labels, direction='vertical')
+                                if sorted_labels != job_labels:
+                                    # Reorder experiences based on sorted labels
+                                    new_order = [job_labels.index(label) for label in sorted_labels]
+                                    experiences = [experiences[i] for i in new_order]
+                                    st.session_state.resume_data['experience'] = experiences
+                                    st.rerun()
+                        except ImportError:
+                            st.caption("Install streamlit-sortables for drag & drop")
+                        except Exception as e:
+                            st.caption(f"Drag & drop unavailable: {e}")
+                        
+                        st.markdown("---")
+                        
+                        # === Edit Each Job ===
                         for i, exp in enumerate(experiences):
+                            col_header, col_delete = st.columns([4, 1])
+                            with col_header:
+                                st.markdown(f"**Job {i+1}**")
+                            with col_delete:
+                                if st.button(f"🗑️ Delete", key=f"del_job_{i}", type="secondary"):
+                                    del experiences[i]
+                                    st.session_state.resume_data['experience'] = experiences
+                                    st.rerun()
+                            
                             col_c, col_t = st.columns(2)
                             with col_c:
                                 new_comp = st.text_input(f"Company {i+1}", value=exp.get('company', ''), key=f"comp_{i}")
                             with col_t:
                                 new_title = st.text_input(f"Title {i+1}", value=exp.get('title', ''), key=f"title_{i}")
                             
-                            # Update company and title
                             experiences[i]['company'] = new_comp
                             experiences[i]['title'] = new_title
                             
-                            # Location and Duration on same row
                             col_loc, col_dur = st.columns(2)
                             with col_loc:
-                                # Location Input
                                 new_loc = st.text_input(f"Location {i+1}", value=exp.get('location', ''), key=f"loc_{i}")
                                 experiences[i]['location'] = new_loc
                             with col_dur:
-                                # Duration Input
                                 new_dur = st.text_input(f"Duration {i+1}", value=exp.get('duration', ''), key=f"dur_{i}")
                                 experiences[i]['duration'] = new_dur
-
                             
+                            # Bullets with Add/Delete
                             new_bullets = []
                             if 'details' in exp:
                                 for j, bullet in enumerate(exp['details']):
-                                    val = st.text_area(f"Bullet {j+1}", value=bullet, key=f"bull_{i}_{j}", height=68)
-                                    new_bullets.append(val)
+                                    col_bull, col_del_bull = st.columns([9, 1])
+                                    with col_bull:
+                                        val = st.text_area(f"Bullet {j+1}", value=bullet, key=f"bull_{i}_{j}", height=68)
+                                        new_bullets.append(val)
+                                    with col_del_bull:
+                                        if st.button("✖", key=f"del_bull_{i}_{j}"):
+                                            del exp['details'][j]
+                                            st.rerun()
+                            
                             experiences[i]['details'] = new_bullets
                             
-                            st.markdown("---")  # Separator between jobs
+                            # Add Bullet Button
+                            if st.button(f"➕ Add Bullet", key=f"add_bull_{i}"):
+                                if 'details' not in experiences[i]:
+                                    experiences[i]['details'] = []
+                                experiences[i]['details'].append("New bullet point")
+                                st.rerun()
+                            
+                            st.markdown("---")
+                        
+                        # === Add New Job Button ===
+                        if st.button("➕ Add New Experience", type="primary"):
+                            experiences.append({
+                                'company': 'New Company',
+                                'title': 'Job Title',
+                                'location': 'City, Province',
+                                'duration': 'Start – End',
+                                'details': ['Achievement bullet point']
+                            })
+                            st.session_state.resume_data['experience'] = experiences
+                            st.rerun()
                         
                         # Force update session state
                         st.session_state.resume_data['experience'] = experiences
+                        st.session_state.expand_experience = False  # Reset
 
-                    with st.expander("Skills (Bullet Points)"):
+                    # === Education CRUD ===
+                    with st.expander("Education", expanded=st.session_state.get('expand_education', False)):
+                        education = st.session_state.resume_data.get('education', [])
+                        
+                        for i, edu in enumerate(education):
+                            col_edu_header, col_edu_del = st.columns([4, 1])
+                            with col_edu_header:
+                                st.markdown(f"**Education {i+1}**")
+                            with col_edu_del:
+                                if st.button(f"🗑️ Delete", key=f"del_edu_{i}", type="secondary"):
+                                    del education[i]
+                                    st.session_state.resume_data['education'] = education
+                                    st.rerun()
+                            
+                            new_title = st.text_input(f"Degree/Title {i+1}", value=edu.get('title', ''), key=f"edu_title_{i}")
+                            education[i]['title'] = new_title
+                            
+                            # Details as single text area
+                            details_text = '\n'.join(edu.get('details', []))
+                            new_details = st.text_area(f"Details {i+1}", value=details_text, height=80, key=f"edu_details_{i}")
+                            education[i]['details'] = [d.strip() for d in new_details.split('\n') if d.strip()]
+                            
+                            st.markdown("---")
+                        
+                        # Add New Education
+                        if st.button("➕ Add New Education", type="primary"):
+                            education.append({
+                                'title': 'Degree, Major',
+                                'details': ['University, Year']
+                            })
+                            st.session_state.resume_data['education'] = education
+                            st.rerun()
+                        
+                        st.session_state.resume_data['education'] = education
+                        st.session_state.expand_education = False  # Reset
+
+                    with st.expander("Skills (Bullet Points)", expanded=st.session_state.get('expand_skills', False)):
                         current_skills = st.session_state.resume_data.get('skills', [])
+                        
+                        # Helper to clean Python list syntax from strings
+                        def clean_skill_text(text):
+                            import re
+                            # Remove ['...', '...'] patterns
+                            text = re.sub(r"\['([^']+)'\s*,\s*'([^']+)'\]", r"\1, \2", text)
+                            text = re.sub(r"\['([^']+)'\]", r"\1", text)
+                            # Remove remaining brackets and quotes
+                            text = text.replace("[", "").replace("]", "").replace("'", "")
+                            return text.strip()
                         
                         # FORMATTING: Convert Dict or List to clean Multiline String
                         skills_text = ""
@@ -841,11 +963,14 @@ elif page == "📄 Resume Export":
                             # Convert Dict {'Cat': 'Skills'} -> "Cat: Skills"
                             lines = []
                             for cat, vals in current_skills.items():
-                                lines.append(f"{cat}: {vals}")
+                                # vals might be a list
+                                if isinstance(vals, list):
+                                    vals = ", ".join(vals)
+                                lines.append(f"{cat}: {clean_skill_text(str(vals))}")
                             skills_text = "\n".join(lines)
                         elif isinstance(current_skills, list):
-                            # Already list, just join
-                            skills_text = "\n".join([str(s) for s in current_skills])
+                            # Clean each skill string
+                            skills_text = "\n".join([clean_skill_text(str(s)) for s in current_skills])
                         else:
                             skills_text = str(current_skills)
                             
@@ -856,8 +981,46 @@ elif page == "📄 Resume Export":
                         if new_skills_str:
                              # Just split by newline, clean whitespace
                              st.session_state.resume_data['skills'] = [s.strip() for s in new_skills_str.split('\n') if s.strip()]
+                        
+                        st.session_state.expand_skills = False  # Reset
 
-
+                    # === Projects CRUD ===
+                    with st.expander("Projects", expanded=st.session_state.get('expand_projects', False)):
+                        projects = st.session_state.resume_data.get('projects', [])
+                        
+                        for i, proj in enumerate(projects):
+                            col_proj_header, col_proj_del = st.columns([4, 1])
+                            with col_proj_header:
+                                st.markdown(f"**Project {i+1}**")
+                            with col_proj_del:
+                                if st.button(f"🗑️ Delete", key=f"del_proj_{i}", type="secondary"):
+                                    del projects[i]
+                                    st.session_state.resume_data['projects'] = projects
+                                    st.rerun()
+                            
+                            # Project can be string or dict
+                            if isinstance(proj, dict):
+                                new_title = st.text_input(f"Title {i+1}", value=proj.get('title', ''), key=f"proj_title_{i}")
+                                new_desc = st.text_area(f"Description {i+1}", value='\n'.join(proj.get('details', [])), height=80, key=f"proj_desc_{i}")
+                                projects[i] = {
+                                    'title': new_title,
+                                    'details': [d.strip() for d in new_desc.split('\n') if d.strip()]
+                                }
+                            else:
+                                # Simple string project
+                                new_proj = st.text_area(f"Project {i+1}", value=str(proj), height=80, key=f"proj_{i}")
+                                projects[i] = new_proj
+                            
+                            st.markdown("---")
+                        
+                        # Add New Project
+                        if st.button("➕ Add New Project", type="primary"):
+                            projects.append("New Project: Description of your project")
+                            st.session_state.resume_data['projects'] = projects
+                            st.rerun()
+                        
+                        st.session_state.resume_data['projects'] = projects
+                        st.session_state.expand_projects = False  # Reset
 
 
                     # Tab 2: Sort Sections (Restored)
