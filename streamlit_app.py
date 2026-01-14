@@ -160,7 +160,7 @@ with st.sidebar:
     
     page = st.radio(
         "Navigate",
-        ["🔍 Job Search", "📄 Resume Export", "📊 Dashboard", "⚙️ Settings"],
+        ["🔍 Job Search", "📄 Resume Export", "📧 Email Center", "📊 Dashboard", "⚙️ Settings"],
         label_visibility="collapsed"
     )
     
@@ -754,22 +754,39 @@ elif page == "📄 Resume Export":
                         try:
                             from streamlit_sortables import sort_items
                             
-                            # Get current order from meta or default
-                            current_order = st.session_state.resume_data.get('_meta', {}).get('section_order', 
-                                ['summary', 'experience', 'education', 'skills', 'projects'])
+                            # Get current order from session state first, then meta, then default
+                            if 'custom_section_order' in st.session_state:
+                                current_order = st.session_state.custom_section_order
+                            else:
+                                current_order = st.session_state.resume_data.get('_meta', {}).get('section_order', 
+                                    ['summary', 'experience', 'education', 'skills', 'projects'])
                             
                             # Show sortable list
                             sorted_sections = sort_items(current_order, direction='horizontal')
                             
-                            if sorted_sections != current_order:
-                                if '_meta' not in st.session_state.resume_data:
-                                    st.session_state.resume_data['_meta'] = {}
-                                st.session_state.resume_data['_meta']['section_order'] = sorted_sections
-                                st.session_state.custom_section_order = sorted_sections
-                                st.rerun()
-                                
-                                st.caption("Current Order: " + " → ".join([s.title() for s in sorted_sections]))
+                            # ALWAYS save the current state
+                            st.session_state.custom_section_order = sorted_sections
+                            
+                            # Update resume_data._meta.section_order
+                            if '_meta' not in st.session_state.resume_data:
+                                st.session_state.resume_data['_meta'] = {}
+                            st.session_state.resume_data['_meta']['section_order'] = sorted_sections
+                            
+                            # Show current order for confirmation
+                            st.success(f"📋 Current Order: {' → '.join([s.title() for s in sorted_sections])}")
+                            
+                            st.info("💡 Click 'Refresh Preview' after reordering to see changes")
 
+                        except ImportError:
+                            st.warning("streamlit-sortables not installed. Using manual reorder:")
+                            # Fallback: use selectbox to reorder
+                            sections = ['summary', 'experience', 'education', 'skills', 'projects']
+                            new_order = []
+                            for i in range(len(sections)):
+                                selected = st.selectbox(f"Section {i+1}", sections, key=f"sect_{i}")
+                                new_order.append(selected)
+                            st.session_state.custom_section_order = new_order
+                            
                         except Exception as e:
                             st.warning(f"Sortables error: {e}")
 
@@ -787,12 +804,20 @@ elif page == "📄 Resume Export":
                             with col_t:
                                 new_title = st.text_input(f"Title {i+1}", value=exp.get('title', ''), key=f"title_{i}")
                             
+                            # Update company and title
                             experiences[i]['company'] = new_comp
                             experiences[i]['title'] = new_title
                             
-                            # Location Input
-                            new_loc = st.text_input(f"Location {i+1}", value=exp.get('location', ''), key=f"loc_{i}")
-                            experiences[i]['location'] = new_loc
+                            # Location and Duration on same row
+                            col_loc, col_dur = st.columns(2)
+                            with col_loc:
+                                # Location Input
+                                new_loc = st.text_input(f"Location {i+1}", value=exp.get('location', ''), key=f"loc_{i}")
+                                experiences[i]['location'] = new_loc
+                            with col_dur:
+                                # Duration Input
+                                new_dur = st.text_input(f"Duration {i+1}", value=exp.get('duration', ''), key=f"dur_{i}")
+                                experiences[i]['duration'] = new_dur
 
                             
                             new_bullets = []
@@ -801,6 +826,10 @@ elif page == "📄 Resume Export":
                                     val = st.text_area(f"Bullet {j+1}", value=bullet, key=f"bull_{i}_{j}", height=68)
                                     new_bullets.append(val)
                             experiences[i]['details'] = new_bullets
+                            
+                            st.markdown("---")  # Separator between jobs
+                        
+                        # Force update session state
                         st.session_state.resume_data['experience'] = experiences
 
                     with st.expander("Skills (Bullet Points)"):
@@ -835,15 +864,27 @@ elif page == "📄 Resume Export":
 
 
                     
-                    if st.button("🔄 Refresh Preview"):
+                    # Refresh button with clear instruction
+                    st.info("💡 After editing, click 'Refresh Preview' to see changes in PDF")
+                    if st.button("🔄 Refresh Preview", type="primary", use_container_width=True):
                         st.rerun()
                         
                 with col_preview:
                     st.subheader("📄 Live Preview")
+                    
+                    # Add timestamp to show when preview was generated
+                    st.caption(f"Preview generated at: {datetime.now().strftime('%H:%M:%S')}")
+                    
                     # Generate temporary PDF for preview
                     try:
-                        # Update meta template
-                        st.session_state.resume_data['_meta'] = {'template': st.session_state.selected_template}
+                        # Update meta template WITHOUT overwriting section_order
+                        if '_meta' not in st.session_state.resume_data:
+                            st.session_state.resume_data['_meta'] = {}
+                        st.session_state.resume_data['_meta']['template'] = st.session_state.selected_template
+                        
+                        # Ensure section_order is preserved
+                        if 'custom_section_order' in st.session_state:
+                            st.session_state.resume_data['_meta']['section_order'] = st.session_state.custom_section_order
                         
                         preview_path = resume_generator.export_pdf(st.session_state.resume_data, "preview_temp.pdf")
                         
@@ -996,6 +1037,215 @@ elif page == "📄 Resume Export":
                                 use_container_width=True,
                                 type="secondary"
                             )
+
+# ==========================
+# Email Center Tab
+# ==========================
+elif page == "📧 Email Center":
+    st.markdown('<h1 class="main-header">Email Center 📧</h1>', unsafe_allow_html=True)
+    st.markdown("Manage cold emails, follow-ups, and track responses")
+    
+    # Email stats
+    col1, col2, col3, col4 = st.columns(4)
+    
+    # Get email stats from database
+    try:
+        from modules.database import SessionLocal, Application
+        db = SessionLocal()
+        total_drafts = db.query(Application).filter(Application.email_stage == 'initial_draft').count()
+        total_sent = db.query(Application).filter(Application.email_stage == 'initial_sent').count()
+        total_replied = db.query(Application).filter(Application.hr_replied == True).count()
+        pending_followup = db.query(Application).filter(
+            Application.email_stage == 'initial_sent',
+            Application.hr_replied == False
+        ).count()
+        db.close()
+    except:
+        total_drafts, total_sent, total_replied, pending_followup = 0, 0, 0, 0
+    
+    with col1:
+        st.metric("📝 Drafts", total_drafts)
+    with col2:
+        st.metric("✉️ Sent", total_sent)
+    with col3:
+        st.metric("💬 Replied", total_replied)
+    with col4:
+        st.metric("⏰ Pending Follow-up", pending_followup)
+    
+    st.markdown("---")
+    
+    # Tabs for different email functions
+    email_tab1, email_tab2, email_tab3 = st.tabs(["📝 Draft New Email", "📬 Follow-up Queue", "📊 Email History"])
+    
+    with email_tab1:
+        st.subheader("Create Cold Email Draft")
+        
+        # Select job to email about
+        if st.session_state.jobs:
+            job_options = {f"{j['title']} @ {j['company']}": j for j in st.session_state.jobs}
+            selected_job_name = st.selectbox("Select Job", list(job_options.keys()))
+            selected_job = job_options.get(selected_job_name, {})
+            
+            if selected_job:
+                st.info(f"**{selected_job.get('title')}** at **{selected_job.get('company')}**")
+                
+                # HR Contact input
+                hr_email = st.text_input("HR/Recruiter Email", placeholder="recruiter@company.com")
+                hr_name = st.text_input("HR/Recruiter Name", placeholder="Sarah Chen")
+                
+                col_gen, col_preview = st.columns(2)
+                
+                with col_gen:
+                    if st.button("🤖 Generate Email with AI", type="primary"):
+                        if hr_email:
+                            try:
+                                from modules.ai_agent import ai_agent
+                                email_content = ai_agent.generate_cold_email(
+                                    job_data=selected_job,
+                                    resume_summary="EdTech and L&D professional with AI experience",
+                                    stage="initial"
+                                )
+                                st.session_state.generated_email = email_content
+                                st.success("Email generated!")
+                            except Exception as e:
+                                st.error(f"Generation failed: {e}")
+                        else:
+                            st.warning("Please enter HR email address")
+                
+                # Display generated email
+                if 'generated_email' in st.session_state:
+                    email = st.session_state.generated_email
+                    st.text_area("Subject", value=email.get('subject', ''), key="email_subject", height=50)
+                    st.text_area("Body", value=email.get('body', ''), key="email_body", height=300)
+                    
+                    if st.button("📤 Create Gmail Draft"):
+                        try:
+                            from modules.gmail_service import gmail_service
+                            draft = gmail_service.create_draft(
+                                to=hr_email,
+                                subject=st.session_state.email_subject,
+                                body=st.session_state.email_body
+                            )
+                            if draft:
+                                st.success("✅ Draft created in Gmail!")
+                            else:
+                                st.error("Failed to create draft. Check Gmail connection.")
+                        except Exception as e:
+                            st.error(f"Gmail error: {e}")
+        else:
+            st.info("Search for jobs first to generate cold emails")
+    
+    with email_tab2:
+        st.subheader("Follow-up Queue")
+        st.info("Applications awaiting follow-up (5+ days since sent, no reply)")
+        
+        try:
+            from modules.auto_followup import AutoFollowupService
+            followup_service = AutoFollowupService()
+            stats = followup_service.get_followup_statistics()
+            
+            st.write(f"**Total pending follow-ups:** {stats.get('pending', 0)}")
+            st.write(f"**Sent this week:** {stats.get('sent_this_week', 0)}")
+            
+            if st.button("🔄 Check & Create Follow-up Drafts"):
+                created = followup_service.check_and_create_followups()
+                st.success(f"Created {len(created)} follow-up drafts")
+        except Exception as e:
+            st.warning(f"Follow-up service not available: {e}")
+    
+    with email_tab3:
+        st.subheader("Email History")
+        
+        try:
+            from modules.database import SessionLocal, Application, Job
+            db = SessionLocal()
+            applications = db.query(Application).order_by(Application.created_at.desc()).limit(20).all()
+            
+            if applications:
+                for app in applications:
+                    job = db.query(Job).filter(Job.id == app.job_id).first()
+                    if job:
+                        status_emoji = {"initial_draft": "📝", "initial_sent": "✉️", "replied": "💬", "followup_sent": "🔄"}.get(app.email_stage, "❓")
+                        st.markdown(f"{status_emoji} **{job.title}** @ {job.company} - {app.email_stage}")
+            else:
+                st.info("No email history yet")
+            
+            db.close()
+        except Exception as e:
+            st.warning(f"Could not load history: {e}")
+
+# ==========================
+# Dashboard Tab
+# ==========================
+elif page == "📊 Dashboard":
+    st.markdown('<h1 class="main-header">Dashboard 📊</h1>', unsafe_allow_html=True)
+    st.markdown("Track your job applications")
+    
+    # Kanban columns
+    col1, col2, col3, col4 = st.columns(4)
+    
+    try:
+        from modules.database import SessionLocal, Application, Job
+        db = SessionLocal()
+        
+        with col1:
+            st.markdown("### 📝 To Apply")
+            to_apply = db.query(Job).filter(
+                ~Job.id.in_(db.query(Application.job_id))
+            ).limit(10).all()
+            
+            for job in to_apply:
+                with st.container():
+                    st.markdown(f"**{job.title}**")
+                    st.caption(f"{job.company}")
+                    if st.button("Apply ➡️", key=f"apply_{job.id}"):
+                        new_app = Application(job_id=job.id, status='to_apply')
+                        db.add(new_app)
+                        db.commit()
+                        st.rerun()
+        
+        with col2:
+            st.markdown("### ✉️ Sent")
+            sent = db.query(Application).join(Job).filter(
+                Application.email_stage == 'initial_sent'
+            ).limit(10).all()
+            
+            for app in sent:
+                with st.container():
+                    st.markdown(f"**{app.job.title}**")
+                    st.caption(f"{app.job.company}")
+        
+        with col3:
+            st.markdown("### 💬 Replied")
+            replied = db.query(Application).join(Job).filter(
+                Application.hr_replied == True
+            ).limit(10).all()
+            
+            for app in replied:
+                with st.container():
+                    st.markdown(f"**{app.job.title}**")
+                    st.caption(f"{app.job.company}")
+                    st.success("Got reply!")
+        
+        with col4:
+            st.markdown("### 🎯 Interview")
+            interviews = db.query(Application).join(Job).filter(
+                Application.status == 'interview'
+            ).limit(10).all()
+            
+            for app in interviews:
+                with st.container():
+                    st.markdown(f"**{app.job.title}**")
+                    st.caption(f"{app.job.company}")
+        
+        db.close()
+    except Exception as e:
+        st.error(f"Database error: {e}")
+        st.info("Make sure database is configured correctly.")
+
+# ==========================
+# Settings Tab
+# ==========================
 elif page == "⚙️ Settings":
     st.markdown('<h1 class="main-header">Settings ⚙️</h1>', unsafe_allow_html=True)
     

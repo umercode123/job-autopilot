@@ -16,13 +16,13 @@ Project Sepcifications: [Yuting Sun_projects](https://drive.google.com/file/d/1V
 ----
 #### 4. Professional Experience
 **Parking Control Services Group — Administrative Assistant**  
-*Toronto, ON | Jul 2023 – Jun 2024*  
+*North York, ON | Mar 2024 – Present*  
 - Managed payroll processing for 10+ employees, ensuring 100% accuracy.  
 - Streamlined HR filing system, reducing discrepancies by 15%. 
 - Supported development of training documentation and process improvement initiatives.
 
 **SavvyPro Edu. Inc — Product & Learning Technology Coordinator  
-*North York, ON | Mar 2024 – Present* 
+*Toronto, ON | Jul 2023 – Jun 2024* 
 - Supported end-to-end coordination of professional learning programs, including scheduling sessions, managing enrollment lists, and collecting evaluations.
 - Collaborated with instructors to prepare materials, troubleshoot virtual classroom issues, and ensure smooth course delivery.
 - Maintained LMS content and learner databases, producing post-program summaries and engagement analytics for leadership teams.

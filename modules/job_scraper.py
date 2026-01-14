@@ -108,7 +108,34 @@ class JobScraper:
                     continue
             
             scraper_logger.info(f"Successfully processed {len(processed_jobs)} jobs")
-            return processed_jobs
+            
+            # POST-PROCESSING: Date filter (Apify Actor may not respect maxAge param)
+            cutoff_date = datetime.utcnow() - timedelta(days=days_ago)
+            filtered_jobs = []
+            unknown_date_count = 0
+            
+            for job in processed_jobs:
+                posted = job.get('posted_date')
+                if posted:
+                    # Handle both datetime and string formats
+                    if isinstance(posted, str):
+                        try:
+                            posted = datetime.fromisoformat(posted.replace('Z', '+00:00'))
+                        except:
+                            posted = None
+                    
+                    if posted and posted >= cutoff_date:
+                        filtered_jobs.append(job)
+                    else:
+                        scraper_logger.debug(f"Filtered out old job: {job['title']} (posted {posted})")
+                else:
+                    # No date available - keep but flag
+                    job['_date_unknown'] = True
+                    filtered_jobs.append(job)
+                    unknown_date_count += 1
+            
+            scraper_logger.info(f"Date filter: {len(processed_jobs)} → {len(filtered_jobs)} (last {days_ago} days, {unknown_date_count} unknown date)")
+            return filtered_jobs
         
         except Exception as e:
             scraper_logger.error(f"Apify scraping failed: {e}", exc_info=True)

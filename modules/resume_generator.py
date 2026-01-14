@@ -209,16 +209,19 @@ class ResumeGenerator:
                     current_job = {
                         "title": title,
                         "company": company,
+                        "location": "",
                         "duration": "",
                         "details": []
                     }
                 
-                # Duration line (italic, starts with *)
+                # Duration line (italic, starts with *) - Format: *Location | Duration*
                 elif line.startswith('*') and ('|' in line or '–' in line):
                     duration_line = line.strip('*').strip()
                     if '|' in duration_line:
                         parts = duration_line.split('|')
                         if current_job:
+                            # First part is location, last part is duration
+                            current_job['location'] = parts[0].strip()
                             current_job['duration'] = parts[-1].strip()
                     else:
                         if current_job:
@@ -556,7 +559,7 @@ class ResumeGenerator:
         story.append(Spacer(1, 10))
 
         # --- SECTIONS ---
-        order = resume_data.get('_meta', {}).get('section_order', ['summary', 'experience', 'skills', 'education'])
+        order = resume_data.get('_meta', {}).get('section_order', ['summary', 'experience', 'projects', 'skills', 'education'])
         
         for section in order:
             if section == 'summary' and resume_data.get('summary'):
@@ -583,7 +586,7 @@ class ResumeGenerator:
                     story.append(t1)
                     
                     c3 = [Paragraph(f"<i>{exp.get('title','')}</i>", ParagraphStyle('Italic', parent=style_job_title, fontName='Times-Italic'))]
-                    c4 = [Paragraph(contact.get('location', ''), style_job_meta)]
+                    c4 = [Paragraph(exp.get('location', ''), style_job_meta)]  # FIXED: Use job-specific location, not contact
                     t2 = Table([[c3, c4]], colWidths=[5.5*inch, 1.5*inch]) 
                     # FIX: Append t2 (Job Title row) which was missing
                     story.append(t2) 
@@ -625,6 +628,24 @@ class ResumeGenerator:
                 story.append(draw_line(500))
                 story.append(Spacer(1, 4))
                 
+                # Helper function to clean markdown syntax
+                def clean_markdown(text):
+                    """Remove markdown syntax like **bold** and keep plain text"""
+                    import re
+                    # Remove **bold** -> bold
+                    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+                    text = re.sub(r'\*\*(.+)\*\*', r'\1', text)
+                    # Remove leftover ** at end of strings
+                    text = re.sub(r'\*\*$', '', text)
+                    text = re.sub(r'^\*\*', '', text)
+                    # Remove *italic* -> italic
+                    text = re.sub(r'\*(.+?)\*', r'\1', text)
+                    # Remove __bold__ -> bold
+                    text = re.sub(r'__(.+?)__', r'\1', text)
+                    # Remove any remaining standalone * or **
+                    text = text.replace('**', '').replace('*', '')
+                    return text.strip()
+                
                 # Projects Logic (Handle both List[str] and List[Dict])
                 projects = resume_data['projects']
                 for proj in projects:
@@ -642,10 +663,12 @@ class ResumeGenerator:
                         
                         if proj.get('details'):
                             for d in proj['details']:
-                                story.append(Paragraph(f"• {d}", style_bullet))
+                                clean_d = clean_markdown(str(d))
+                                story.append(Paragraph(f"• {clean_d}", style_bullet))
                     else:
-                        # Simple String Project
-                        story.append(Paragraph(f"• {str(proj)}", style_bullet))
+                        # Simple String Project - Clean markdown
+                        clean_proj = clean_markdown(str(proj))
+                        story.append(Paragraph(f"• {clean_proj}", style_bullet))
                     
                     story.append(Spacer(1, 4))
 
@@ -1045,16 +1068,16 @@ Return ONLY valid JSON, no markdown, no extra text."""
         try:
             # Compression/Optimization settings
             # We want a STRICT ONE-PAGE resume.
-            # 500 words is a safer upper limit for 1 page with decent spacing.
+            # 420 words is safer for 1 page with projects section
             
-            target_words = 500
+            target_words = 350  # Very aggressive for strict 1-page with projects
             if template and template.get('layout') == 'two_column':
-                target_words = 600
+                target_words = 420
             
             app_logger.info(f"Tailoring resume. Target: ~{target_words} words ({mode} mode)")
             
-            # AI Prompt - STRICT 1-PAGE & KEYWORDS
-            prompt = f"""You are an expert resume writer.
+            # AI Prompt - STRICT 1-PAGE & KEYWORDS + ANTI-HALLUCINATION
+            prompt = f"""You are an expert resume writer creating a STRICT 1-PAGE resume.
 
 TARGET JOB DESCRIPTION:
 {job_description[:2500]}
@@ -1062,38 +1085,52 @@ TARGET JOB DESCRIPTION:
 CURRENT RESUME (JSON):
 {json.dumps(resume_data, indent=2)}
 
-TASK: Use the JD keywords to rewrite the resume into a STRICT 1-PAGE version.
+TASK: Create a 1-PAGE optimized resume using JD keywords. You MUST include ALL sections.
+
+CRITICAL 1-PAGE CONSTRAINTS:
+- Total resume: ~{target_words} words maximum (STRICT LIMIT)
+- Experience: MAX 2-3 bullets per job (ONLY the most relevant to JD)
+- Each bullet: MAX 1 line only
+- Projects: MAX 1 short sentence per project
+- Skills: ONLY keep skills mentioned in JD, remove irrelevant skills
+- Education: One line per degree only
+
+MANDATORY SECTIONS (DO NOT OMIT ANY):
+1. Summary (2 sentences max)
+2. Experience (all jobs with compressed bullets, keep location field!)
+3. Education
+4. Skills (filtered to match JD keywords)
+5. **PROJECTS** - Include but compress heavily
 
 RULES:
-1. **KEYWORD INTEGRATION**: Rewrite bullet points to naturally include hard skills from the JD.
-2. **STRICT LENGTH**: 
-   - **MAX 4 BULLETS** per job role (choose the most relevant ones).
-   - **MAX 2 LINES** per bullet point (concise but impactful).
-   - Total length approx {target_words} words.
-3. **STRUCTURE**: Keep exact JSON keys. Do not remove jobs unless >10 years old.
-4. **NO FILLER**: Remove "Responsibilities included", "Helped with". Start with Action Verbs.
+1. **KEYWORD INTEGRATION**: Rewrite bullets using JD keywords.
+2. **STRUCTURE**: Keep exact JSON keys including 'projects' and 'location'.
+3. **NO FILLER**: Remove wordy phrases. Start with Action Verbs.
+4. **SKILLS FILTER**: Only keep skills that appear in the JD or are closely related.
 
-CRITICAL NEGATIVE CONSTRAINTS (DO NOT IGNORE):
-- **NEVER** change Dates, Job Titles, or Company Names. Copy them EXACTLY.
-- **NEVER** change Locations. USE THE EXACT LOCATION FROM THE SOURCE JSON.
-- **DO NOT** apply the candidate's current residence (e.g., London, ON) to past jobs. 
-- If a job's location is "Toronto", KEEP IT "Toronto".
-- **DO NOT** hallucinate new facts or numbers. Only rephrase existing bullets.
+CRITICAL DATA PRESERVATION (DO NOT CHANGE THESE):
+- Copy 'location' field EXACTLY from each job in source JSON
+- Copy 'duration' field EXACTLY from each job in source JSON  
+- Copy 'company' field EXACTLY from each job in source JSON
+- Copy 'title' field EXACTLY from each job in source JSON
 
+PROJECTS HANDLING:
+- Keep ALL 3 project titles
+- Each project description: 1 short sentence only (no markdown syntax)
+- Remove ** and * markdown characters
 
-Example Rewrite:
-Before: "Responsible for managing the project team and using Python to automate data entry which saved time."
-After: "Spearheaded automation initiatives using Python, reducing manual data entry by 40% and optimizing team workflows."
+OUTPUT JSON MUST INCLUDE:
+- "name", "contact", "summary", "experience" (with location!), "education", "skills", "projects"
 
 Return JSON:"""
 
             response = ai_agent.client.chat.completions.create(
                 model=ai_agent.model,
                 messages=[
-                    {"role": "system", "content": "You are a specialized resume writer. Your goal is to create a DENSE, KEYWORD-RICH resume that passes ATS and fills the page. Return ONLY valid JSON."},
+                    {"role": "system", "content": "You are a specialized resume writer. Your goal is to create a DENSE, KEYWORD-RICH resume that passes ATS and fills the page. NEVER change locations, dates, or company names. Return ONLY valid JSON."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7, 
+                temperature=0.3,  # Reduced from 0.7 to minimize hallucination
                 max_tokens=3500
             )
             
@@ -1107,11 +1144,74 @@ Return JSON:"""
             
             compressed = json.loads(result)
             
+            # ============================================================
+            # POST-PROCESSING: CRITICAL - Restore fields AI might change
+            # Use COMPANY NAME MATCHING instead of index (AI may reorder)
+            # ============================================================
+            
+            original_exp = resume_data.get('experience', [])
+            compressed_exp = compressed.get('experience', [])
+            
+            # Create lookup by company name (case-insensitive)
+            original_lookup = {}
+            for exp in original_exp:
+                company = exp.get('company', '').strip().lower()
+                if company:
+                    original_lookup[company] = exp
+            
+            # Restore critical fields for each job using company name matching
+            restored_count = 0
+            for comp_exp in compressed_exp:
+                comp_company = comp_exp.get('company', '').strip().lower()
+                
+                # Find matching original job
+                orig = original_lookup.get(comp_company)
+                if not orig:
+                    # Try partial match (e.g., "Parking Control" vs "Parking Control Services Group")
+                    for key, val in original_lookup.items():
+                        if key in comp_company or comp_company in key:
+                            orig = val
+                            break
+                
+                if orig:
+                    # Force restore location - THIS IS CRITICAL
+                    if orig.get('location'):
+                        comp_exp['location'] = orig['location']
+                    # Force restore company name (exact spelling)
+                    if orig.get('company'):
+                        comp_exp['company'] = orig['company']
+                    # Force restore duration/dates
+                    if orig.get('duration'):
+                        comp_exp['duration'] = orig['duration']
+                    restored_count += 1
+                    app_logger.debug(f"Restored fields for: {comp_exp.get('company')}")
+                else:
+                    app_logger.warning(f"Could not match job: {comp_exp.get('company')} - fields may be incorrect")
+            
+            app_logger.info(f"Post-processing: Restored {restored_count}/{len(compressed_exp)} jobs")
+            
+            # 2. ALWAYS restore projects section from original
+            if resume_data.get('projects'):
+                compressed['projects'] = resume_data['projects']
+                app_logger.info("Projects section restored from original")
+            
+            # 3. Restore contact info (should never change)
+            if resume_data.get('contact'):
+                compressed['contact'] = resume_data['contact']
+            
+            # 4. Restore education (should rarely change)
+            if resume_data.get('education'):
+                compressed['education'] = resume_data['education']
+            
+            # 5. Preserve _meta from original (section order, template, etc.)
+            if resume_data.get('_meta'):
+                compressed['_meta'] = resume_data['_meta']
+            
             # Add word count metadata
             word_count = self._count_words(compressed)
             compressed['_word_count'] = word_count
             
-            app_logger.info(f"Tailored resume generated: {word_count} words")
+            app_logger.info(f"Tailored resume generated: {word_count} words (with strict post-processing)")
             
             return compressed
         

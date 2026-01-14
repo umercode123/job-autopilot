@@ -16,24 +16,34 @@
 - 🔍 **Automated Indeed/LinkedIn Scraping** via Apify
 - 🤖 **AI-Powered Job Scoring** (0-10 rating based on your profile)
 - 📊 **Smart Categorization** (EdTech, AI PM, Automation, L&D)
-- 💾 **Database Caching** (Neon PostgreSQL + optional Redis)
+- 💾 **Database Caching** (Neon PostgreSQL + Local SQLite fallback)
 - 📦 **Load Cached Jobs** (reuse previous searches, save API quota)
+- 📅 **Date Filtering** (post-processing filter ensures only recent jobs)
 
-### 📄 **Resume Export & Optimization** ✨ NEW
+### 📄 **Resume Export & Optimization** ✨ IMPROVED
 - 📤 **Multi-Format Upload**: Support PDF, DOCX, and Markdown master resumes
 - 🎨 **Professional Templates**: 4 ATS-friendly templates (single/two-column, classic/modern)
-- 🔄 **AI Compression**: Optional smart compression to fit 1-page (preserves critical info)
+- 🔄 **AI Compression**: Smart compression to fit strict 1-page (350 words target)
 - 📊 **ATS Scoring**: Real-time ATS compatibility score with keyword matching
 - 🎯 **Job-Tailored Resumes**: AI optimizes resume for each job description
+- 🔒 **Anti-Hallucination**: Post-processing validation preserves locations, dates, and projects
+- 📦 **Projects Section**: Always preserved with markdown syntax cleanup
+- 🛠️ **Skills Filtering**: AI filters skills to match JD keywords
 - 📥 **Export Options**: Download as PDF or DOCX with proper formatting
 - 🔧 **Drag-and-Drop Sections**: Reorder resume sections interactively
-- 🖼️ **Live Preview**: Real-time preview before export
+- 🖼️ **Live Preview**: Real-time preview with timestamp
 
-### 📝 **Legacy Resume Optimization**
-- ✍️ **AI Resume Tailoring** (GPT-4o-mini optimized for each job)
-- 📄 **ATS-Friendly Formatting** (.docx + PDF export)
-- 🎯 **Keyword Matching** (auto-detect missing keywords)
-- 📏 **1-Page Constraint** (strict length limit for recruiters)
+### 📧 **Email Center** ✨ NEW
+- 📝 **Draft Cold Emails**: AI-generated personalized emails
+- 📬 **Gmail Integration**: Create drafts directly in Gmail
+- 📊 **Email Statistics**: Track drafts, sent, replied counts
+- ⏰ **Follow-up Queue**: Auto-generate follow-up drafts
+- 📜 **Email History**: View all email activities
+
+### 📊 **Dashboard** ✨ NEW
+- 📈 **Kanban Board**: Visual pipeline (To Apply → Sent → Replied → Interview)
+- 🎯 **One-Click Apply**: Move jobs through stages
+- 📧 **Status Tracking**: Real-time application status
 
 ### ✉️ **Smart Cold Email Campaigns**
 - 📧 **Two-Stage Strategy**:
@@ -44,12 +54,6 @@
 - 🔔 **Reply Detection** (auto-track HR responses)
 - ⏰ **Auto Follow-up** (5 days after initial email, max 1 per job)
 - 🤝 **AI Disclosure** (transparent about AI-assisted outreach)
-
-### 📊 **Application Tracking**
-- 📈 **Kanban Dashboard** (To Apply → Sent → Replied → Interview)
-- 🔗 **LinkedIn HR Finder** (automated contact scraping with session rotation)
-- 📧 **Email Thread Tracking** (Gmail API integration)
-- 📝 **Notes & Status Updates**
 
 ### 🎨 **Modern UI**
 - 🖥️ **Streamlit Web Interface** (clean, responsive design)
