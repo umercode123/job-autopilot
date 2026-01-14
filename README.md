@@ -63,15 +63,26 @@
 
 ```mermaid
 graph TD
-    A[Start: Upload Resume] -->|PDF/DOCX/MD| B(Select Template)
-    B --> C{AI Optimization?}
-    C -->|Yes| D[AI Tailoring w/ Job Description]
-    C -->|No| E[Manual Edit]
-    D --> E
-    E -->|Edit Content/Skills| F[Live PDF Preview]
-    F -->|Drag & Drop Sections| F
-    F --> G[Check ATS Score]
-    G --> H[Export Final PDF/DOCX]
+    User([User Input]) -->|Keywords & Location| Scraper[Job Scraper Engine]
+    Scraper -->|Apify Indeed Actor| DB[(PostgreSQL Database)]
+    DB --> UI[Streamlit Dashboard]
+    
+    subgraph "Phase 1: Resume Engine"
+    UI -->|Select Job| AI_Resume{AI Resume Tailor}
+    Master[Master Resume] --> AI_Resume
+    AI_Resume -->|GPT-4o Optimization| Draft[Draft Resume]
+    Draft -->|Manual Edit & Reorder| Preview[Live PDF Preview]
+    Preview -->|ATS Check| FinalPDF[Exported Resume]
+    end
+    
+    subgraph "Phase 2: Outreach System"
+    UI -->|Target Job| AI_mail{AI Email Generator}
+    FinalPDF -->|Attach| AI_mail
+    AI_mail -->|Generate| Drafts[Gmail Drafts]
+    Drafts -->|Review & Send| Sent[Sent Emails]
+    Sent -->|Monitor Reply| Tracker[Reply Tracker]
+    Tracker -->|No Reply + 5 Days| FollowUp[Auto-Followup]
+    end
 ```
 
 ---
