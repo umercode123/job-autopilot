@@ -68,29 +68,7 @@
 
 ## 🔄 Workflow
 
-```mermaid
-graph TD
-    User([User Input]) -->|Keywords & Location| Scraper[Job Scraper Engine]
-    Scraper -->|Apify Indeed Actor| DB[(PostgreSQL Database)]
-    DB --> UI[Streamlit Dashboard]
-    
-    subgraph "Phase 1: Resume Engine"
-    UI -->|Select Job| AI_Resume{AI Resume Tailor}
-    Master[Master Resume] --> AI_Resume
-    AI_Resume -->|GPT-4o Optimization| Draft[Draft Resume]
-    Draft -->|Manual Edit & Reorder| Preview[Live PDF Preview]
-    Preview -->|ATS Check| FinalPDF[Exported Resume]
-    end
-    
-    subgraph "Phase 2: Outreach System"
-    UI -->|Target Job| AI_mail{AI Email Generator}
-    FinalPDF -->|Attach| AI_mail
-    AI_mail -->|Generate| Drafts[Gmail Drafts]
-    Drafts -->|Review & Send| Sent[Sent Emails]
-    Sent -->|Monitor Reply| Tracker[Reply Tracker]
-    Tracker -->|No Reply + 5 Days| FollowUp[Auto-Followup]
-    end
-```
+![Job Autopilot Workflow](workflow.png)
 
 ---
 
@@ -384,26 +362,7 @@ gcloud run deploy job-autopilot \
 
 **Strategy**: Two-stage approach (higher reply rate)
 
-```python
-# Stage 1: Initial Contact (no resume)
-1. Click "✉️ Create Draft"
-2. AI generates personalized email:
-   - Brief introduction (< 150 words)
-   - 1 relevant project highlight
-   - AI disclosure statement
-   - Ask if they'd like to see resume
-3. Email saved as Gmail draft
-4. Manually review and send
-
-# Stage 2: Follow-up (with resume)
-5 days later:
-1. System checks for HR reply
-2. If no reply → generates follow-up email:
-   - References initial email
-   - Attaches optimized resume
-   - Suggests specific meeting times
-3. Max 1 follow-up per job (avoid spam)
-```
+![Job Autopilot Workflow](workflow.png)
 
 **Expected Results**:
 - Initial email: 1-5% reply rate

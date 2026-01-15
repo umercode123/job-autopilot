@@ -39,6 +39,12 @@ pip install email-validator
 - >30天邮箱显示警告
 - bounce 检测后标记无效
 
+### 7. Applied Jobs 管理区 (新) 🆕
+
+- **位置**: 集成在 **Dashboard** 页面顶部的 Expander "📚 Web Applied History"
+- **功能**: 显示手动标记为 Applied 的职位列表，支持 ↩️ Undo 撤销
+- **优势**: 管理更清晰，不挤占侧边栏空间
+
 ---
 
 ## 修改文件
