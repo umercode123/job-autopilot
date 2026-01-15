@@ -362,7 +362,6 @@ gcloud run deploy job-autopilot \
 
 **Strategy**: Two-stage approach (higher reply rate)
 
-![Job Autopilot Workflow](workflow.png)
 
 **Expected Results**:
 - Initial email: 1-5% reply rate
