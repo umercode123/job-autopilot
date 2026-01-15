@@ -70,6 +70,9 @@ def update_application_status(job_id, key):
             job_id_int = int(job_id)
             scraper.mark_job_as_applied(job_id_int, applied=True)
             st.toast(f"✅ Job marked as applied!")
+            # Remove from session state to hide immediately
+            if 'jobs' in st.session_state:
+                st.session_state.jobs = [j for j in st.session_state.jobs if j.get('id') != job_id_int]
         except ValueError:
             st.error(f"Invalid job ID: {job_id}")
 
@@ -333,7 +336,7 @@ if page == "🔍 Job Search":
             try:
                 # Load from database - get ALL jobs (not just recent)
                 scraper = JobScraper()
-                cached_jobs = scraper.get_all_jobs(limit=1000, exclude_applied=True)  # Get all jobs, filtering applied
+                cached_jobs = scraper.get_all_jobs(limit=100, exclude_applied=True)  # Limit 100 for performance
                 
                 if cached_jobs:
                     # Convert SQLAlchemy objects to dicts
