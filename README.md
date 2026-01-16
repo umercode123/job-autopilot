@@ -12,15 +12,21 @@
 
 ## ✨ Features
 
-### 🎯 **Intelligent Job Discovery**
-- 🔍 **Automated Indeed/LinkedIn Scraping** via Apify
+<details>
+<summary><h3>🎯 Intelligent Job Discovery</h3></summary>
+
+- 🔍 **Automated Indeed Scraping** via Apify
 - 🤖 **AI-Powered Job Scoring** (0-10 rating based on your profile)
 - 📊 **Smart Categorization** (EdTech, AI PM, Automation, L&D)
 - 💾 **Database Caching** (Neon PostgreSQL + Local SQLite fallback)
 - 📦 **Load Cached Jobs** (reuse previous searches, save API quota)
 - 📅 **Date Filtering** (post-processing filter ensures only recent jobs)
 
-### 📄 **Resume Export & Optimization** ✨ IMPROVED
+</details>
+
+<details>
+<summary><h3>📄 Resume Export & Optimization ✨ IMPROVED</h3></summary>
+
 - 📤 **Multi-Format Upload**: Support PDF, DOCX, and Markdown master resumes
 - 🎨 **Professional Templates**: 4 ATS-friendly templates (single/two-column, classic/modern)
 - 🧠 **GPT-4o Powered**: Resume optimization uses GPT-4o for higher accuracy (other features use cost-effective GPT-4o-mini)
@@ -35,20 +41,32 @@
 - ✏️ **CRUD Experience/Education**: Add, edit, delete job entries directly in UI
 - 🖼️ **Live Preview**: Real-time preview with timestamp
 
-### 📧 **Email Center** ✨ NEW
+</details>
+
+<details>
+<summary><h3>📧 Email Center ✨ NEW</h3></summary>
+
 - 📝 **Draft Cold Emails**: AI-generated personalized emails
 - 📬 **Gmail Integration**: Create drafts directly in Gmail
 - 📊 **Email Statistics**: Track drafts, sent, replied counts
 - ⏰ **Follow-up Queue**: Auto-generate follow-up drafts
 - 📜 **Email History**: View all email activities
 
-### 📊 **Dashboard** ✨ NEW
+</details>
+
+<details>
+<summary><h3>📊 Dashboard ✨ NEW</h3></summary>
+
 - 📈 **Kanban Board**: Visual pipeline (To Apply → Sent → Replied → Interview)
 - 📚 **Applied History**: Manage manually marked applications (Undo/View History)
 - 🎯 **One-Click Apply**: Move jobs through stages
 - 📧 **Status Tracking**: Real-time application status
 
-### ✉️ **Smart Cold Email Campaigns**
+</details>
+
+<details>
+<summary><h3>✉️ Smart Cold Email Campaigns</h3></summary>
+
 - 📧 **Two-Stage Strategy**:
   - Stage 1: Brief intro (no resume, avoid spam filters)
   - Stage 2: Detailed email with optimized resume (after HR replies)
@@ -58,17 +76,27 @@
 - ⏰ **Auto Follow-up** (5 days after initial email, max 1 per job)
 - 🤝 **AI Disclosure** (transparent about AI-assisted outreach)
 
-### 🕵️‍♂️ **Apollo HR Automation** ✨ NEW
+</details>
+
+<details>
+<summary><h3>🕵️‍♂️ Apollo HR Automation ✨ NEW</h3></summary>
+
 - 🤖 **Playwright-Based Scout**: Robust, headless browser agent to find HR contacts on Apollo.io.
 - 🎯 **On-Demand Search**: Trigger HR lookup for specific jobs directly from the dashboard.
 - 💾 **Smart Caching**: Results are saved to database to avoid redundant searches.
 - ⚡ **Anti-Blocking**: Uses persistent browser context and human-like behavior to navigate Apollo safely.
 
-### 🎨 **Modern UI**
+</details>
+
+<details>
+<summary><h3>🎨 Modern UI</h3></summary>
+
 - 🖥️ **Streamlit Web Interface** (clean, responsive design)
 - 🌓 **Dark Mode Support**
 - 📱 **Mobile-Friendly**
 - 🎯 **Real-time API Status** (check connection health)
+
+</details>
 
 ---
 
@@ -537,6 +565,7 @@ For full details, please read the [LICENSE](LICENSE) file.
 
 - **OpenAI** for GPT-4o-mini API
 - **Apify** for job scraping infrastructure
+- **Apollo.io** for providing comprehensive professional contact data (and their accessible free tier which makes this tool possible)
 - **Neon** for generous free PostgreSQL tier
 - **Streamlit** for amazing UI framework
 - **[Resume-Matcher](https://github.com/srbhr/Resume-Matcher)** for inspiring our PDF/DOCX parsing approach using `pdfminer.six` and `docx2txt`
