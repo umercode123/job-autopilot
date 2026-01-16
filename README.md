@@ -167,6 +167,7 @@ streamlit run streamlit_app.py --server.port=8501
 job-autopilot/
 ├── modules/
 │   ├── ai_agent.py              # GPT-4o-mini integration (scoring, resume, emails)
+│   ├── apollo_automation.py     # Playwright-based Apollo HR scraper
 │   ├── job_scraper.py           # Apify job scraper with caching
 │   ├── gmail_service.py         # Gmail API integration
 │   ├── database.py              # SQLAlchemy models (Neon PostgreSQL)
@@ -174,6 +175,7 @@ job-autopilot/
 │   ├── auto_followup.py         # Auto follow-up email generator
 │   └── logger_config.py         # Centralized logging
 ├── scripts/
+│   ├── run_apollo_scraper.py    # Standalone Apollo scraper runner
 │   ├── init_database.py         # Database initialization
 │   └── test_apis.py             # API connection testing
 ├── data/
@@ -181,6 +183,7 @@ job-autopilot/
 │   ├── resumes/                 # Generated resumes (gitignored)
 │   └── logs/                    # Application logs (gitignored)
 ├── docs/
+│   ├── APOLLO_AGENT_PLAN.md     # HR Automation strategy
 │   ├── AUTO_FOLLOWUP.md         # Follow-up email strategy
 │   └── REDIS_SETUP.md           # Redis configuration guide
 ├── streamlit_app.py             # Main Streamlit UI
@@ -388,6 +391,26 @@ Dashboard → View all applications:
 
 Gmail integration auto-updates status!
 ```
+
+### 5. **Apollo Agent (HR Automation)** ✨
+
+> **Note**: This feature uses Playwright to navigate Apollo.io. It runs strictly locally on your machine.
+
+**Usage**:
+1. **Find HR Email**:
+   - Go to "Draft New Email" tab.
+   - Click **"🕵️ Find HR email with Apollo"** button next to a job.
+   - The agent will launch a background Chrome instance, search for the company, and extract the best matching HR contact.
+   
+2. **First Time Setup**:
+   - The first run will open a browser window.
+   - **Manually log in** to your Apollo.io account.
+   - Result: Session cookies are saved to `.playwright_data/`. Subsequent runs will be automatic (headless or visible depending on config).
+
+3. **Status Indicators**:
+   - `Pending`: No HR found yet.
+   - `Found`: Saved to database.
+   - `Not Found`: No match after search.
 
 ---
 
