@@ -400,3 +400,4 @@ gmail_token.json
 
 logs/
 .playwright_data/
+data/debug_screenshots/

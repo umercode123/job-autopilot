@@ -204,6 +204,18 @@ Generate the message:"""
             # Fallback to template
             return f"Hi {first_name}, fellow {school} alum here! I'd love to connect and learn about your experience. Looking forward to chatting!"
     
+    def generate_message(self, contact: Dict) -> str:
+        """
+        Alias for generate_connection_message (for backward compatibility)
+        
+        Args:
+            contact: Contact information with name, company, title, school
+            
+        Returns:
+            Personalized connection message
+        """
+        return self.generate_connection_message(contact)
+    
     def generate_coffee_chat_message(
         self,
         contact: Dict,

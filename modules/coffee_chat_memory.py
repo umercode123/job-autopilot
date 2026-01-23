@@ -344,6 +344,160 @@ class CoffeeChatMemory:
         except Exception as e:
             app_logger.error(f"Failed to get stats: {e}")
             return {}
+    
+    def get_pending_contacts(self) -> List[str]:
+        """
+        Get list of contact IDs with pending status
+        
+        Returns:
+            List of contact IDs
+        """
+        try:
+            results = self.contacts_collection.get(
+                where={"relationship_status": "pending"}
+            )
+            return results['ids'] if results['ids'] else []
+        except Exception as e:
+            app_logger.error(f"Failed to get pending contacts: {e}")
+            return []
+    
+    def update_contact_status(self, contact_id: str, status: str):
+        """
+        Update contact relationship status
+        
+        Args:
+            contact_id: Contact identifier
+            status: New status ('pending', 'accepted', 'declined', 'connected')
+        """
+        try:
+            # ChromaDB doesn't support direct updates, so we need to get and re-add
+            result = self.contacts_collection.get(ids=[contact_id])
+            
+            if result['ids']:
+                metadata = result['metadatas'][0]
+                metadata['relationship_status'] = status
+                metadata['status_updated_at'] = datetime.utcnow().isoformat()
+                
+                # Update by deleting and re-adding
+                self.contacts_collection.delete(ids=[contact_id])
+                self.contacts_collection.add(
+                    ids=[contact_id],
+                    embeddings=[self._get_embedding(result['documents'][0])],
+                    documents=result['documents'],
+                    metadatas=[metadata]
+                )
+                
+                app_logger.info(f"Updated contact {contact_id} status to {status}")
+        except Exception as e:
+            app_logger.error(f"Failed to update contact status: {e}")
+    
+    def get_all_contacts(self) -> List[Dict]:
+        """
+        Get all contacts from memory
+        
+        Returns:
+            List of contact dictionaries
+        """
+        try:
+            results = self.contacts_collection.get()
+            
+            contacts = []
+            for i, contact_id in enumerate(results['ids']):
+                contact = {
+                    'id': contact_id,
+                    'profile': results['documents'][i] if results['documents'] else '',
+                    **results['metadatas'][i]
+                }
+                contacts.append(contact)
+            
+            return contacts
+        except Exception as e:
+            app_logger.error(f"Failed to get all contacts: {e}")
+            return []
+    
+    def get_contacts_by_status(self, status: str) -> List[Dict]:
+        """
+        Get contacts filtered by status
+        
+        Args:
+            status: Status to filter by
+            
+        Returns:
+            List of contacts with that status
+        """
+        try:
+            results = self.contacts_collection.get(
+                where={"relationship_status": status}
+            )
+            
+            contacts = []
+            for i, contact_id in enumerate(results['ids']):
+                contact = {
+                    'id': contact_id,
+                    'profile': results['documents'][i] if results['documents'] else '',
+                    **results['metadatas'][i]
+                }
+                contacts.append(contact)
+            
+            return contacts
+        except Exception as e:
+            app_logger.error(f"Failed to get contacts by status: {e}")
+            return []
+    
+    def save_search_history(self, company: str, school: str, results_count: int):
+        """
+        Save search history to avoid duplicate searches
+        
+        Args:
+            company: Company searched
+            school: School filter used
+            results_count: Number of results found
+        """
+        try:
+            search_id = f"search_{company}_{school}_{datetime.utcnow().timestamp()}"
+            search_text = f"Searched {company} for alumni from {school}"
+            
+            self.interactions_collection.add(
+                ids=[search_id],
+                embeddings=[self._get_embedding(search_text)],
+                documents=[search_text],
+                metadatas=[{
+                    'type': 'search',
+                    'company': company,
+                    'school': school,
+                    'results_count': results_count,
+                    'timestamp': datetime.utcnow().isoformat()
+                }]
+            )
+            
+            app_logger.info(f"Saved search history: {company} + {school}")
+        except Exception as e:
+            app_logger.error(f"Failed to save search history: {e}")
+    
+    def has_searched_company(self, company: str, school: str = None) -> bool:
+        """
+        Check if we've already searched this company
+        
+        Args:
+            company: Company name
+            school: Optional school filter
+            
+        Returns:
+            True if already searched
+        """
+        try:
+            where_clause = {"company": company}
+            if school:
+                where_clause["school"] = school
+            
+            results = self.interactions_collection.get(
+                where=where_clause
+            )
+            
+            return len(results['ids']) > 0
+        except Exception as e:
+            app_logger.error(f"Failed to check search history: {e}")
+            return False
 
 
 # Demo/Test

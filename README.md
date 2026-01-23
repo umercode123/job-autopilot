@@ -12,28 +12,39 @@
 
 ## ✨ Features
 
-### 🎯 Intelligent Job Discovery
+<details>
+<summary><h3>🎯 Intelligent Job Discovery</h3></summary>
+
 - 🔍 **Automated Indeed Scraping** via Apify
 - 🤖 **AI-Powered Job Scoring** (0-10 rating based on your profile)
 - 📊 **Smart Categorization** (EdTech, AI PM, Automation, L&D)
 - 💾 **Database Caching** (Neon PostgreSQL + Local SQLite fallback)
 - 📦 **Load Cached Jobs** (reuse previous searches, save API quota)
+</details>
 
-### 📄 Resume Export & Optimization
+<details>
+<summary><h3>📄 Resume Export & Optimization</h3></summary>
+
 - 📤 **Multi-Format Upload**: Support PDF, DOCX, and Markdown master resumes
 - 🎨 **Professional Templates**: 4 ATS-friendly templates (single/two-column, classic/modern)
 - 🧠 **GPT-4o Powered**: Resume optimization uses GPT-4o for higher accuracy
 - 📊 **ATS Scoring**: Real-time ATS compatibility score with keyword matching
 - 🎯 **Job-Tailored Resumes**: AI optimizes resume for each job description
 - 🔒 **Anti-Hallucination**: Iron-clad data protection - dates, locations locked
+</details>
 
-### ☕ Coffee Chat Center ✨ NEW
+<details>
+<summary><h3>☕ Coffee Chat Center ✨ NEW</h3></summary>
+
 - 🎓 **School Configuration**: Set your alumni schools (priority-ranked)
 - 🏷️ **Target Fields**: Define your professional interests (L&D, AI, etc.)
 - 📋 **Job Integration**: Link high-value jobs to LinkedIn search
 - 🔗 **One-Click LinkedIn Launch**: Search alumni directly from UI
+</details>
 
-### 🔗 LinkedIn Automation ✨ NEW
+<details>
+<summary><h3>🔗 LinkedIn Automation ✨ NEW</h3></summary>
+
 - 🌐 **Chrome DevTools MCP**: AI-friendly browser automation via accessibility tree
 - 🎓 **Alumni Search**: Find 2nd-degree connections from your schools
 - 🤖 **AI Agents**:
@@ -43,31 +54,47 @@
 - 🧠 **Memory Layer**: ChromaDB vector storage for learning from successful messages
 - 📨 **Auto-Connect**: Send connection requests with rate limiting (10-20s delays)
 - 💾 **Persistent Profile**: Uses dedicated Chrome profile (no conflict with personal Chrome)
+</details>
 
-### 📧 Email Center
+<details>
+<summary><h3>📧 Email Center</h3></summary>
+
 - 📝 **Draft Cold Emails**: AI-generated personalized emails
 - 📬 **Gmail Integration**: Create drafts directly in Gmail
 - 📊 **Email Statistics**: Track drafts, sent, replied counts
 - ⏰ **Follow-up Queue**: Auto-generate follow-up drafts
+</details>
 
-### 📊 Dashboard
+<details>
+<summary><h3>📊 Dashboard</h3></summary>
+
 - 📈 **Kanban Board**: Visual pipeline (To Apply → Sent → Replied → Interview)
 - 📚 **Applied History**: Manage manually marked applications
 - 🎯 **One-Click Apply**: Move jobs through stages
 - 📧 **Status Tracking**: Real-time application status
+</details>
 
 ---
 
 ## 🏗️ Architecture
 
-### Project Overview
+<details>
+<summary><h3>Project Overview</h3></summary>
+
 ![Project Architecture](Job%20Autopilot%20-%20Complete%20Project%20Architecture.png)
+</details>
 
-### Coffee Chat Data Flow
+<details>
+<summary><h3>Coffee Chat Data Flow</h3></summary>
+
 ![Data Flow](Coffee%20chat%20center%20Data%20Flow%20Diagram.png)
+</details>
 
-### LinkedIn Automation Flow
+<details>
+<summary><h3>LinkedIn Automation Flow</h3></summary>
+
 ![LinkedIn Flow](LinkedIn%20Automation%20Flow.png)
+</details>
 
 ---
 

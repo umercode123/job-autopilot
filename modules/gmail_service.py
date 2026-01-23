@@ -182,6 +182,86 @@ class GmailService:
             gmail_logger.error(f"Failed to get user email: {e}")
             return None
     
+    def send_notification(
+        self,
+        subject: str,
+        body: str,
+        to: Optional[str] = None
+    ) -> bool:
+        """
+        Send a notification email (e.g., LinkedIn verification needed)
+        
+        Args:
+            subject: Email subject
+            body: Email body
+            to: Recipient email (default: self, the authenticated user)
+        
+        Returns:
+            bool: True if sent successfully
+        """
+        if not self.authenticated:
+            gmail_logger.warning("Not authenticated. Call authenticate() first.")
+            if not self.authenticate():
+                return False
+        
+        try:
+            # Default to sending to self
+            if not to:
+                to = self.get_user_email()
+            
+            if not to:
+                gmail_logger.error("Could not determine recipient email")
+                return False
+            
+            # Create message
+            message = MIMEText(body, 'plain')
+            message['to'] = to
+            message['subject'] = subject
+            
+            # Encode message
+            raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+            
+            # Send email
+            self.service.users().messages().send(
+                userId='me',
+                body={'raw': raw_message}
+            ).execute()
+            
+            gmail_logger.info(f"Notification sent: {subject}")
+            return True
+        
+        except HttpError as e:
+            gmail_logger.error(f"Gmail API error: {e}", exc_info=True)
+            return False
+        except Exception as e:
+            gmail_logger.error(f"Failed to send notification: {e}", exc_info=True)
+            return False
+    
+    def send_verification_alert(self) -> bool:
+        """
+        Send alert when LinkedIn requires verification
+        
+        Returns:
+            bool: True if sent successfully
+        """
+        subject = "🔐 LinkedIn Automation - Verification Required"
+        body = """
+LinkedIn Automation Alert
+========================
+
+LinkedIn is requesting verification (CAPTCHA or code).
+
+Please:
+1. Open LinkedIn in your browser
+2. Complete the verification
+3. Restart the automation script
+
+---
+Sent by Job Autopilot
+https://github.com/Schlaflied/job-autopilot
+"""
+        return self.send_notification(subject, body)
+    
     def test_connection(self) -> Dict:
         """
         Test Gmail API connection

@@ -18,9 +18,11 @@ hiredis==2.3.2  # Faster redis parser
 
 # AI & NLP
 openai==1.6.1
+google-generativeai>=0.3.0  # Gemini API for message generation
 langchain==0.1.0
 langchain-openai==0.0.2
 tiktoken==0.5.2  # Token counting
+mcp>=0.1.0  # Model Context Protocol
 
 # Web Scraping
 requests==2.31.0
